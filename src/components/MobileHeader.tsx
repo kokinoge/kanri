@@ -1,6 +1,6 @@
 "use client";
 
-import { useSession, signOut } from "next-auth/react";
+import { useAuth } from "./providers";
 import { Menu, Bell, User, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,7 +16,7 @@ interface MobileHeaderProps {
 }
 
 export default function MobileHeader({ onToggleNav }: MobileHeaderProps) {
-  const { data: session } = useSession();
+  const { user, logout } = useAuth();
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200 px-4 py-3 flex items-center justify-between">
@@ -47,7 +47,7 @@ export default function MobileHeader({ onToggleNav }: MobileHeaderProps) {
         </Button>
 
         {/* ユーザーメニュー */}
-        {session?.user && (
+        {user && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon">
@@ -58,14 +58,14 @@ export default function MobileHeader({ onToggleNav }: MobileHeaderProps) {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <div className="px-3 py-2">
-                <p className="text-sm font-medium">{session.user.name || session.user.email}</p>
+                <p className="text-sm font-medium">{user.name || user.email}</p>
                 <p className="text-xs text-gray-500">
-                  {(session.user as any).role === 'admin' ? '管理者' : 
-                   (session.user as any).role === 'manager' ? 'マネージャー' : 'メンバー'}
+                  {user.role === 'admin' ? '管理者' : 
+                   user.role === 'manager' ? 'マネージャー' : 'メンバー'}
                 </p>
               </div>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => signOut()}>
+              <DropdownMenuItem onClick={logout}>
                 <LogOut className="mr-2 h-4 w-4" />
                 ログアウト
               </DropdownMenuItem>

@@ -1,12 +1,12 @@
 "use client";
 
-import { useSession, signOut } from "next-auth/react";
+import { useAuth } from "./providers";
 import Link from "next/link";
 import { Bell, User, LogOut, Plus, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function Header() {
-  const { data: session } = useSession();
+  const { user, logout } = useAuth();
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200">
@@ -20,7 +20,7 @@ export default function Header() {
 
         {/* 右側: ユーザー情報とアクション */}
         <div className="flex items-center space-x-4">
-          {session?.user ? (
+          {user ? (
             <>
               {/* クイックアクション */}
               <div className="hidden md:flex items-center space-x-2">
@@ -48,11 +48,11 @@ export default function Header() {
               <div className="flex items-center space-x-3">
                 <div className="text-right hidden sm:block">
                   <div className="text-sm font-medium text-gray-900">
-                    {session.user.name ?? session.user.email}
+                    {user.name ?? user.email}
                   </div>
                   <div className="text-xs text-gray-500">
-                    {(session.user as any).role === 'admin' ? '管理者' : 
-                     (session.user as any).role === 'manager' ? 'マネージャー' : 'メンバー'}
+                    {user.role === 'admin' ? '管理者' : 
+                     user.role === 'manager' ? 'マネージャー' : 'メンバー'}
                   </div>
                 </div>
                 
@@ -65,7 +65,7 @@ export default function Header() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => signOut()}
+                  onClick={logout}
                   className="flex items-center text-gray-500 hover:text-gray-700"
                 >
                   <LogOut className="w-4 h-4" />

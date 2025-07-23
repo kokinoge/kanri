@@ -30,25 +30,25 @@ const navSections = [
   {
     title: "データ管理",
     items: [
-      { name: "統合管理", href: "/budget-results", icon: Activity },
+      { name: "統合管理", href: "/integrated-management", icon: Activity },
     ]
   },
   {
     title: "実績・分析",
     items: [
-      { name: "統合管理", href: "/integrated-management", icon: Activity },
-      { name: "事業部分析", href: "/department-performance", icon: Building },
-      { name: "クライアント分析", href: "/client-analysis", icon: Building2 },
-      { name: "レポート", href: "/reports", icon: BarChart3 },
+      { name: "実績入力", href: "/results", icon: DollarSign },
+      { name: "事業部分析", href: "/analytics", icon: Building },
+      { name: "クライアント分析", href: "/analytics", icon: Building2 },
+      { name: "レポート", href: "/analytics", icon: BarChart3 },
     ]
   },
   {
     title: "システム",
     items: [
       { name: "クライアント管理", href: "/clients", icon: Building2 },
-      { name: "事業部管理", href: "/settings/departments", icon: Building },
-      { name: "ユーザー管理", href: "/users", icon: Users },
-      { name: "マスター管理", href: "/settings/masters", icon: Settings },
+      { name: "事業部管理", href: "/analytics", icon: Building },
+      { name: "ユーザー管理", href: "/analytics", icon: Users },
+      { name: "マスター管理", href: "/analytics", icon: Settings },
     ]
   }
 ];
