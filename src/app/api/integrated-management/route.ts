@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -104,9 +106,9 @@ export async function GET(request: NextRequest) {
           actualResult: correspondingResult?.actualResult || 0,
           resultId: correspondingResult?.id || null,
           efficiency: correspondingResult?.actualSpend ? 
-            (correspondingResult.actualResult / correspondingResult.actualSpend) : 0,
+            (Number(correspondingResult.actualResult) / Number(correspondingResult.actualSpend)) : 0,
           achievementRate: budget.targetValue ? 
-            ((correspondingResult?.actualResult || 0) / budget.targetValue * 100) : 0
+            ((Number(correspondingResult?.actualResult) || 0) / Number(budget.targetValue) * 100) : 0
         });
 
         processedKeys.add(key);
@@ -133,7 +135,7 @@ export async function GET(request: NextRequest) {
           actualSpend: result.actualSpend,
           actualResult: result.actualResult,
           resultId: result.id,
-          efficiency: result.actualSpend ? (result.actualResult / result.actualSpend) : 0,
+          efficiency: result.actualSpend ? (Number(result.actualResult) / Number(result.actualSpend)) : 0,
           achievementRate: 0
         });
       }
