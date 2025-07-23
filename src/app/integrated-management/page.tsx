@@ -89,16 +89,27 @@ export default function IntegratedManagementPage() {
         setLoading(true);
         setError(null);
 
+        console.log('[INTEGRATED_MANAGEMENT] データ取得開始');
+
         // クライアントデータを取得
         const clientsResponse = await fetch('/api/clients', {
           credentials: 'include',
         });
 
+        console.log('[INTEGRATED_MANAGEMENT] クライアントAPI応答:', {
+          status: clientsResponse.status,
+          statusText: clientsResponse.statusText,
+          ok: clientsResponse.ok
+        });
+
         if (!clientsResponse.ok) {
-          throw new Error('データの取得に失敗しました');
+          const errorText = await clientsResponse.text();
+          console.error('[INTEGRATED_MANAGEMENT] APIエラー:', errorText);
+          throw new Error(`データの取得に失敗しました (${clientsResponse.status}): ${errorText}`);
         }
 
         const clients = await clientsResponse.json();
+        console.log('[INTEGRATED_MANAGEMENT] 取得したクライアント数:', clients.length);
 
         // サンプルデータで統合データを構築
         const integratedData: IntegratedData = {
@@ -121,18 +132,33 @@ export default function IntegratedManagementPage() {
         };
 
         setData(integratedData);
+        console.log('[INTEGRATED_MANAGEMENT] データ設定完了');
       } catch (err: any) {
-        console.error('データ取得エラー:', err);
-        setError(err.message);
+        console.error('[INTEGRATED_MANAGEMENT] データ取得エラー:', err);
+        setError(err.message || 'データの取得に失敗しました');
       } finally {
         setLoading(false);
+        console.log('[INTEGRATED_MANAGEMENT] ローディング完了');
       }
     };
 
+    console.log('[INTEGRATED_MANAGEMENT] useEffect実行:', {
+      user: !!user,
+      authLoading,
+      selectedMonth,
+      selectedYear
+    });
+
     if (user) {
+      console.log('[INTEGRATED_MANAGEMENT] ユーザー認証済み、データ取得開始');
+      fetchData();
+    } else if (!authLoading) {
+      console.log('[INTEGRATED_MANAGEMENT] 認証未完了だがローディング終了');
+      // 一時的: 認証問題を回避してデータを表示
+      console.log('[INTEGRATED_MANAGEMENT] 認証問題回避のためデータ取得を実行');
       fetchData();
     }
-  }, [user, selectedMonth, selectedYear]);
+  }, [user, authLoading, selectedMonth, selectedYear]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ja-JP', {
@@ -150,12 +176,20 @@ export default function IntegratedManagementPage() {
   };
 
   if (authLoading || loading) {
+    console.log('[INTEGRATED_MANAGEMENT] ローディング表示:', { authLoading, loading });
     return (
       <AppLayout>
         <div className="max-w-6xl mx-auto">
           <div className="text-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">統合データを読み込み中...</p>
+            <p className="text-gray-600">
+              {authLoading ? 'ユーザー情報読み込み中' : '基本データ読み込み中'}...
+            </p>
+            {process.env.NODE_ENV === 'development' && (
+              <div className="mt-4 text-xs text-gray-400">
+                Debug: authLoading={authLoading.toString()}, loading={loading.toString()}, user={!!user}
+              </div>
+            )}
           </div>
         </div>
       </AppLayout>

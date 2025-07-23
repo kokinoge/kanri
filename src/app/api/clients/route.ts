@@ -62,12 +62,35 @@ let SAMPLE_CLIENTS = [
 
 export async function GET(request: NextRequest) {
   try {
+    console.log('[CLIENTS_API] GET リクエスト受信:', {
+      url: request.url,
+      method: request.method,
+      headers: Object.fromEntries(request.headers.entries()),
+      timestamp: new Date().toISOString(),
+      env: process.env.NODE_ENV,
+      clientsCount: SAMPLE_CLIENTS.length
+    });
+
     console.log('[CLIENTS_API] クライアント一覧を返却:', SAMPLE_CLIENTS.length, '件');
-    return NextResponse.json(SAMPLE_CLIENTS);
+    
+    const response = NextResponse.json(SAMPLE_CLIENTS);
+    response.headers.set('X-Debug-Clients-Count', SAMPLE_CLIENTS.length.toString());
+    response.headers.set('X-Debug-Timestamp', new Date().toISOString());
+    
+    return response;
   } catch (error) {
-    console.error('クライアント取得エラー:', error);
+    console.error('[CLIENTS_API] クライアント取得エラー:', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      timestamp: new Date().toISOString()
+    });
+    
     return NextResponse.json(
-      { error: 'クライアントの取得に失敗しました' },
+      { 
+        error: 'クライアントの取得に失敗しました',
+        details: error instanceof Error ? error.message : String(error),
+        timestamp: new Date().toISOString()
+      },
       { status: 500 }
     );
   }
@@ -75,6 +98,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('[CLIENTS_API] POST リクエスト受信:', {
+      url: request.url,
+      method: request.method,
+      timestamp: new Date().toISOString()
+    });
+
     const body = await request.json();
     const { name, managerId, priority, department, salesDepartment, agency, salesChannel } = body;
 
@@ -124,9 +153,18 @@ export async function POST(request: NextRequest) {
     console.log('[CLIENTS_API] 新しいクライアントを作成:', newClient);
     return NextResponse.json(newClient);
   } catch (error) {
-    console.error('クライアント作成エラー:', error);
+    console.error('[CLIENTS_API] クライアント作成エラー:', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      timestamp: new Date().toISOString()
+    });
+    
     return NextResponse.json(
-      { error: 'クライアントの作成に失敗しました' },
+      { 
+        error: 'クライアントの作成に失敗しました',
+        details: error instanceof Error ? error.message : String(error),
+        timestamp: new Date().toISOString()
+      },
       { status: 500 }
     );
   }
