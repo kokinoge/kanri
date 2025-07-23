@@ -1,30 +1,39 @@
-import { withAuth } from "next-auth/middleware"
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
 
-export default withAuth(
-  function middleware(req) {
-    // 認証が必要なページでの追加チェック
-    return
-  },
-  {
-    callbacks: {
-      authorized: ({ token, req }) => {
-        // 公開ページは認証不要
-        const publicPaths = ['/login', '/api/auth']
-        const isPublicPath = publicPaths.some(path => 
-          req.nextUrl.pathname.startsWith(path)
-        )
-        
-        if (isPublicPath) {
-          return true
-        }
-        
-        // その他のページは認証が必要
-        return !!token
-      },
-    },
+export function middleware(request: NextRequest) {
+  console.log('[MIDDLEWARE]', {
+    path: request.nextUrl.pathname,
+    method: request.method,
+    userAgent: request.headers.get('user-agent'),
+    timestamp: new Date().toISOString()
+  })
+  
+  // 認証APIの特別な処理
+  if (request.nextUrl.pathname.startsWith('/api/auth/')) {
+    console.log('[MIDDLEWARE_AUTH]', {
+      fullPath: request.nextUrl.pathname,
+      searchParams: Object.fromEntries(request.nextUrl.searchParams)
+    })
+    
+    const response = NextResponse.next()
+    response.headers.set('X-Middleware-Cache', 'no-cache')
+    response.headers.set('X-Auth-Debug', 'middleware-processed')
+    return response
   }
-)
+  
+  // その他のAPIルート
+  if (request.nextUrl.pathname.startsWith('/api/')) {
+    const response = NextResponse.next()
+    response.headers.set('X-Middleware-Cache', 'no-cache')
+    return response
+  }
+  
+  return NextResponse.next()
+}
 
 export const config = {
-  matcher: ['/((?!api/auth|_next/static|_next/image|favicon.ico).*)'],
+  matcher: [
+    '/api/:path*'
+  ]
 } 
