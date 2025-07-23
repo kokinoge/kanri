@@ -1,0 +1,4 @@
+campaign_id,year,month,platform,operation_type,budget_type,actual_spend,actual_result
+"1","2024","1","Google","運用代行","月次予算","100000","300000"
+"1","2024","2","Google","運用代行","月次予算","120000","350000"
+"1","2024","3","Google","運用代行","月次予算","110000","320000" 

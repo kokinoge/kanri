@@ -43,7 +43,7 @@ SNSマーケティング支援代理店における月次予算管理の効率�
 
 ### 3.3 予算管理機能
 - 月次予算設定・編集・複製
-- 階層構造：クライアント → 施策 → 媒体・運用タイプ
+- 階層構造：クライアント → 案件 → 媒体・運用タイプ
 - 予算vs実績の進捗管理
 
 ### 3.4 実績管理機能
@@ -72,7 +72,7 @@ SNSマーケティング支援代理店における月次予算管理の効率�
 ### 4.1 階層構造
 ```
 クライアント
-└── 施策（キャンペーン）
+└── 案件（案件）
     ├── 媒体別予算（X, Instagram, YouTube, TikTok, Threads）
     └── 運用タイプ別予算（マイクロIF, メガIF, 広告運用, コンテンツ制作）
 ```
@@ -220,11 +220,11 @@ POST   /api/clients              // クライアント作成
 PUT    /api/clients/[id]         // クライアント更新
 DELETE /api/clients/[id]         // クライアント削除
 
-// 施策管理
-GET    /api/campaigns            // 施策一覧（フィルタ対応）
-POST   /api/campaigns            // 施策作成
-PUT    /api/campaigns/[id]       // 施策更新
-DELETE /api/campaigns/[id]       // 施策削除
+// 案件管理
+GET    /api/campaigns            // 案件一覧（フィルタ対応）
+POST   /api/campaigns            // 案件作成
+PUT    /api/campaigns/[id]       // 案件更新
+DELETE /api/campaigns/[id]       // 案件削除
 
 // 予算管理
 GET    /api/budgets              // 予算一覧（フィルタ対応）
@@ -264,9 +264,9 @@ PUT    /api/masters/[id]         // マスタデータ更新
 │   ├── [id]/page.tsx          // クライアント詳細
 │   └── new/page.tsx           // 新規クライアント登録
 ├── campaigns/
-│   ├── page.tsx               // 施策一覧
-│   ├── [id]/page.tsx          // 施策詳細
-│   └── new/page.tsx           // 新規施策作成
+│   ├── page.tsx               // 案件一覧
+│   ├── [id]/page.tsx          // 案件詳細
+│   └── new/page.tsx           // 新規案件作成
 ├── budgets/
 │   ├── page.tsx               // 予算管理
 │   └── [id]/edit/page.tsx     // 予算編集
@@ -334,7 +334,7 @@ PUT    /api/masters/[id]         // マスタデータ更新
 │   │   ├── 基本情報
 │   │   ├── 月次予算管理
 │   │   ├── 実績管理
-│   │   └── 施策管理
+│   │   └── 案件管理
 │   └── 新規クライアント登録
 ├── 予算管理
 │   ├── 全体予算概要
@@ -402,7 +402,7 @@ export function hasPermission(userRole: string, action: string) {
 
 ### 10.3 フェーズ3: コアビジネス機能
 1. クライアント管理機能
-2. 施策管理機能
+2. 案件管理機能
 3. 予算設定機能
 4. 実績入力機能
 

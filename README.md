@@ -1,36 +1,258 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 予算管理システム（Kanri）
 
-## Getting Started
+インフルエンサーマーケティング向けの包括的な予算・実績管理システムです。
 
-First, run the development server:
+## 🚀 機能概要
 
+### 📊 ダッシュボード
+- リアルタイム統計データ表示
+- 月別トレンドチャート（過去12ヶ月）
+- プラットフォーム別予算分布（円グラフ）
+- クライアント別パフォーマンス（棒グラフ）
+- ROI・効率性指標の表示
+
+### 👥 クライアント管理
+- クライアント情報のCRUD操作
+- 優先度設定・担当者管理
+- クライアント別実績サマリー
+
+### 📅 施策管理
+- 施策情報のCRUD操作
+- 開始日・終了日管理
+- クライアント紐付け
+
+### 💰 予算管理
+- 年月・プラットフォーム・運用タイプ・売上タイプ別予算管理
+- 目標KPI・目標値設定
+- 施策別絞り込み機能
+
+### 📈 実績管理
+- 実際の支出・結果の記録
+- 予算との比較表示
+- プラットフォーム別実績追跡
+
+### 📋 レポート機能
+- 詳細なフィルタリング機能（期間・クライアント・プラットフォーム）
+- 月別トレンド・プラットフォーム別パフォーマンスチャート
+- CSV出力機能
+- ROI計算・サマリー表示
+
+### 👤 ユーザー管理
+- 管理者（admin）・マネージャー（manager）・メンバー（member）の3段階権限
+- ユーザー登録・編集・削除機能
+- 権限に応じたアクセス制御
+
+## 🛠 技術スタック
+
+### フロントエンド
+- **Next.js** 14.2.30 - Reactフレームワーク
+- **TypeScript** - 型安全な開発
+- **Tailwind CSS** v3.4.0 - ユーティリティファーストCSS
+- **shadcn/ui** - UIコンポーネントライブラリ
+- **Recharts** - チャート表示ライブラリ
+
+### バックエンド
+- **Next.js API Routes** - サーバーレスAPI
+- **Prisma ORM** - データベースアクセス
+- **NextAuth.js** v5 - 認証システム
+
+### データベース
+- **PostgreSQL** - メインデータベース
+
+### 状態管理・UI
+- **SWR** - データフェッチング
+- **React Hook Form** - フォーム管理
+- **Sonner** - トースト通知
+
+## 📦 セットアップ方法
+
+### 前提条件
+- Node.js 18以上
+- PostgreSQL 12以上
+- npm または yarn
+
+### 1. プロジェクトのクローン
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone <repository-url>
+cd kanri
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. 依存関係のインストール
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 3. 環境変数の設定
+`.env`ファイルを作成し、以下の環境変数を設定：
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```env
+# Database
+DATABASE_URL="postgresql://username:password@localhost:5432/kanri_db"
 
-## Learn More
+# NextAuth.js
+NEXTAUTH_SECRET="your-secret-key-here"
+NEXTAUTH_URL="http://localhost:3000"
+```
 
-To learn more about Next.js, take a look at the following resources:
+### 4. データベースの設定
+```bash
+# Prismaクライアントの生成
+npx prisma generate
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# データベースマイグレーション
+npx prisma migrate dev
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+# 初期データの投入（オプション）
+npx prisma db seed
+```
 
-## Deploy on Vercel
+### 5. 開発サーバーの起動
+```bash
+npm run dev
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+ブラウザで `http://localhost:3000` にアクセスしてください。
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 🔐 アクセス権限
+
+### 管理者（admin）
+- 全機能へのアクセス
+- ユーザー管理
+- システム設定
+
+### マネージャー（manager）
+- クライアント・施策の作成・編集
+- 予算・実績管理
+- レポート機能
+- 一般ユーザーの管理
+
+### メンバー（member）
+- データの閲覧
+- 予算・実績の入力
+- レポートの参照
+
+## 📱 使用方法
+
+### 初回ログイン
+1. システム管理者に依頼してアカウントを作成してもらいます
+2. 提供されたメールアドレスとパスワードでログインします
+3. プロフィールページで個人情報を更新します
+
+### クライアント登録
+1. サイドバーの「クライアント管理」をクリック
+2. 「新規クライアント追加」ボタンをクリック
+3. 必要情報を入力して保存
+
+### 施策作成
+1. 「施策管理」ページで「新規施策追加」をクリック
+2. クライアントを選択し、施策詳細を入力
+3. 開始日・終了日を設定
+
+### 予算登録
+1. 「予算管理」ページで「新規作成」をクリック
+2. 施策を選択し、年月・プラットフォームを設定
+3. 予算金額・目標KPIを入力
+
+### 実績入力
+1. 「実績管理」ページで「新規作成」をクリック
+2. 対応する施策・年月を選択
+3. 実際の支出・結果を入力
+
+### レポート出力
+1. 「レポート」ページでフィルター条件を設定
+2. 必要に応じてCSV出力ボタンをクリック
+3. データをダウンロードして分析
+
+## 🐛 トラブルシューティング
+
+### よくある問題
+
+#### データベース接続エラー
+- PostgreSQLサービスが起動しているか確認
+- DATABASE_URLが正しく設定されているか確認
+- データベースが存在するか確認
+
+#### 認証エラー
+- NEXTAUTH_SECRETが設定されているか確認
+- セッションの有効期限が切れていないか確認
+- ブラウザのキャッシュをクリア
+
+#### CSS表示の問題
+- Next.jsのキャッシュをクリア: `rm -rf .next`
+- 依存関係を再インストール: `npm install`
+
+## 📞 サポート
+
+システムに関する問題や機能要望については、プロジェクト管理者にお問い合わせください。
+
+## 🔄 バックアップ・復旧
+
+### データベースバックアップ
+```bash
+pg_dump -h localhost -U username kanri_db > backup.sql
+```
+
+### データベース復旧
+```bash
+psql -h localhost -U username kanri_db < backup.sql
+```
+
+## 📈 パフォーマンス最適化
+
+- データベースインデックスが適切に設定されています
+- SWRによるクライアントサイドキャッシュが有効です
+- Prismaによるクエリ最適化が実装されています
+
+## 🚦 開発・本番環境
+
+### 開発環境
+```bash
+# 通常の起動
+npm run dev
+
+# ポート3000が使用中の場合
+npm run dev:3001
+
+# または、使用中のプロセスを終了してから起動
+npm run dev:clean
+
+# ポート使用状況の確認
+npm run check-port
+```
+
+### 本番ビルド
+```bash
+npm run build
+npm start
+```
+
+## 🔧 トラブルシューティング
+
+### ポート3000が使用中の場合
+
+**エラー**: `Error: listen EADDRINUSE: address already in use :::3000`
+
+**原因**:
+- 既存のNext.jsプロセスが動作中
+- 他のアプリケーションがポート3000を使用
+- ブラウザの接続が残存（CLOSE_WAIT状態）
+
+**対策**:
+```bash
+# 1. ポート使用状況を確認
+npm run check-port
+
+# 2. 自動的にプロセスを終了して起動
+npm run dev:clean
+
+# 3. 別のポートで起動
+npm run dev:3001
+
+# 4. 手動でプロセス終了（上記で解決しない場合）
+npx kill-port 3000
+```
+
+---
+
+**Version**: 1.0.0  
+**Last Updated**: 2024年12月
