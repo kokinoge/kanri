@@ -1,0 +1,12 @@
+import { NextRequest, NextResponse } from "next/server";
+
+// 一時的に認証チェックを無効化
+export default function middleware(req: NextRequest) {
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: [
+    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+  ],
+} 

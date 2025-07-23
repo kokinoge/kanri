@@ -1,150 +1,106 @@
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { auth } from "@/auth";
-import { hasRequiredRole } from "@/lib/permissions";
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
 
-export async function GET(request: Request) {
+// 予算一覧取得
+export async function GET() {
   try {
-    // 一時的に認証チェックをスキップ（開発時のみ）
-    /*
-    const session = await auth();
-    if (!hasRequiredRole(session, "member")) {
-      return new NextResponse("Unauthorized", { status: 401 });
-    }
-    */
-
-    const { searchParams } = new URL(request.url);
-    const campaignId = searchParams.get("campaignId");
-
-    let budgets;
-    if (campaignId) {
-      budgets = await prisma.budget.findMany({
-        where: { campaignId },
-        include: {
-          campaign: {
-            include: {
-              client: true,
-            },
-          },
+    const budgets = await prisma.budget.findMany({
+      include: {
+        client: {
+          select: {
+            name: true
+          }
         },
-        orderBy: [
-          { year: "desc" },
-          { month: "desc" },
-          { platform: "asc" },
-        ],
-      });
-    } else {
-      budgets = await prisma.budget.findMany({
-        include: {
-          campaign: {
-            include: {
-              client: true,
-            },
-          },
-        },
-        orderBy: [
-          { year: "desc" },
-          { month: "desc" },
-          { platform: "asc" },
-        ],
-      });
-    }
-
+        department: {
+          select: {
+            name: true
+          }
+        }
+      },
+      orderBy: [
+        { year: 'desc' },
+        { month: 'desc' },
+        { createdAt: 'desc' }
+      ]
+    });
+    
     return NextResponse.json(budgets);
   } catch (error) {
-    console.error("[BUDGETS_GET]", error);
-    return new NextResponse("Internal Server Error", { status: 500 });
+    console.error('予算取得エラー:', error);
+    return NextResponse.json(
+      { error: '予算データの取得に失敗しました' },
+      { status: 500 }
+    );
   }
 }
 
-export async function POST(request: Request) {
+// 予算新規作成
+export async function POST(request: NextRequest) {
   try {
-    // 一時的に認証チェックをスキップ（開発時のみ）
-    /*
-    const session = await auth();
-    if (!hasRequiredRole(session, "manager")) {
-      return new NextResponse("Unauthorized", { status: 401 });
-    }
-    */
-
     const body = await request.json();
-    console.log('[BUDGETS_API] POST request data:', body);
-    
-    const { 
-      campaignId, 
-      yearMonth, 
-      year: inputYear, 
-      month: inputMonth, 
-      amount, 
-      platform, 
-      operationType, 
-      budgetType, 
-      targetKpi, 
-      targetValue 
-    } = body;
+    const { name, clientId, departmentId, totalAmount, year, month } = body;
 
-    // 年月データの処理
-    let finalYear = inputYear;
-    let finalMonth = inputMonth;
-    
-    if (yearMonth && !inputYear && !inputMonth) {
-      // yearMonthが "YYYY-MM" 形式であることを簡易的にチェック
-      if (!/^\d{4}-\d{2}$/.test(yearMonth)) {
-        return new NextResponse("Invalid yearMonth format. Expected YYYY-MM", { status: 400 });
+    if (!name || !name.trim()) {
+      return NextResponse.json(
+        { error: '予算名は必須です' },
+        { status: 400 }
+      );
+    }
+
+    if (!totalAmount || totalAmount <= 0) {
+      return NextResponse.json(
+        { error: '予算額は0より大きい値を入力してください' },
+        { status: 400 }
+      );
+    }
+
+    // 同じ期間・クライアント・部署の予算が存在するかチェック（オプション）
+    const existingBudget = await prisma.budget.findFirst({
+      where: {
+        name: name.trim(),
+        year: year || new Date().getFullYear(),
+        month: month || new Date().getMonth() + 1
       }
-      const [yearStr, monthStr] = yearMonth.split('-');
-      finalYear = parseInt(yearStr);
-      finalMonth = parseInt(monthStr);
-    } else {
-      finalYear = parseInt(inputYear) || new Date().getFullYear();
-      finalMonth = parseInt(inputMonth) || new Date().getMonth() + 1;
-    }
-
-    if (!campaignId || !finalYear || !finalMonth || !amount || !platform || !operationType || !budgetType) {
-      console.error('[BUDGETS_API] バリデーションエラー:', {
-        campaignId, finalYear, finalMonth, amount, platform, operationType, budgetType
-      });
-      return new NextResponse("Missing required fields", { status: 400 });
-    }
-
-    console.log('[BUDGETS_API] 作成データ:', {
-      campaignId,
-      year: finalYear,
-      month: finalMonth,
-      amount: Number(amount),
-      platform,
-      operationType,
-      budgetType,
-      targetKpi,
-      targetValue
     });
+
+    if (existingBudget) {
+      return NextResponse.json(
+        { error: '同じ名前・期間の予算が既に存在します' },
+        { status: 400 }
+      );
+    }
 
     const budget = await prisma.budget.create({
       data: {
-        campaignId,
-        year: finalYear,
-        month: finalMonth,
-        amount: Number(amount),
-        platform,
-        operationType,
-        budgetType: budgetType,
-        targetKpi,
-        targetValue: targetValue ? Number(targetValue) : null,
+        name: name.trim(),
+        clientId: clientId || null,
+        departmentId: departmentId || null,
+        totalAmount: parseFloat(totalAmount),
+        usedAmount: 0,
+        year: year || new Date().getFullYear(),
+        month: month || new Date().getMonth() + 1,
+        status: 'active'
       },
       include: {
-        campaign: {
-          include: {
-            client: true
+        client: {
+          select: {
+            name: true
+          }
+        },
+        department: {
+          select: {
+            name: true
           }
         }
       }
     });
 
-    console.log('[BUDGETS_API] 予算作成成功:', budget.id);
-
-    return NextResponse.json(budget);
+    return NextResponse.json(budget, { status: 201 });
   } catch (error) {
-    console.error("[BUDGETS_POST]", error);
-    return new NextResponse("Internal Server Error", { status: 500 });
+    console.error('予算作成エラー:', error);
+    return NextResponse.json(
+      { error: '予算の作成に失敗しました' },
+      { status: 500 }
+    );
   }
 } 

@@ -1,0 +1,326 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --radius: 0.625rem;
+  --background: 0 0% 100%;
+  --foreground: 222.2 84% 4.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 84% 4.9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222.2 84% 4.9%;
+  --primary: 222.2 47.4% 11.2%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 210 40% 96%;
+  --secondary-foreground: 222.2 47.4% 11.2%;
+  --muted: 210 40% 96%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  --accent: 210 40% 96%;
+  --accent-foreground: 222.2 47.4% 11.2%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --ring: 222.2 84% 4.9%;
+}
+
+.dark {
+  --background: 222.2 84% 4.9%;
+  --foreground: 210 40% 98%;
+  --card: 222.2 84% 4.9%;
+  --card-foreground: 210 40% 98%;
+  --popover: 222.2 84% 4.9%;
+  --popover-foreground: 210 40% 98%;
+  --primary: 210 40% 98%;
+  --primary-foreground: 222.2 47.4% 11.2%;
+  --secondary: 217.2 32.6% 17.5%;
+  --secondary-foreground: 210 40% 98%;
+  --muted: 217.2 32.6% 17.5%;
+  --muted-foreground: 215 20.2% 65.1%;
+  --accent: 217.2 32.6% 17.5%;
+  --accent-foreground: 210 40% 98%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 217.2 32.6% 17.5%;
+  --input: 217.2 32.6% 17.5%;
+  --ring: 212.7 26.8% 83.9%;
+}
+
+@layer base {
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* モバイル向けタッチ操作最適化 */
+@layer utilities {
+  /* タッチ操作の最適化 */
+  .touch-manipulation {
+    touch-action: manipulation;
+  }
+  
+  /* モバイル向けのボタンサイズ */
+  .btn-mobile {
+    @apply min-h-[44px] min-w-[44px] px-4 py-2;
+  }
+  
+  /* タップ領域の拡大 */
+  .tap-target {
+    @apply relative;
+  }
+  
+  .tap-target::after {
+    content: '';
+    @apply absolute inset-0 min-h-[44px] min-w-[44px];
+    @apply flex items-center justify-center;
+  }
+  
+  /* スワイプ可能な要素 */
+  .swipeable {
+    @apply touch-manipulation select-none;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+  
+  /* アクティブ状態のフィードバック */
+  .active-feedback {
+    @apply transition-all duration-150 ease-out;
+  }
+  
+  .active-feedback:active {
+    @apply scale-95 bg-gray-100;
+  }
+  
+  /* モバイル向けのフォーカス状態 */
+  .mobile-focus {
+    @apply focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2;
+  }
+  
+  /* スクロール最適化 */
+  .smooth-scroll {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+  
+  /* セーフエリア対応 */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+  
+  .pl-safe {
+    padding-left: env(safe-area-inset-left);
+  }
+  
+  .pr-safe {
+    padding-right: env(safe-area-inset-right);
+  }
+  
+  /* モバイル向けのカードスタイル */
+  .mobile-card {
+    @apply bg-white rounded-lg border border-gray-200 shadow-sm;
+    @apply active:bg-gray-50 touch-manipulation;
+    @apply transition-colors duration-150;
+  }
+  
+  /* モバイル向けのリストアイテム */
+  .mobile-list-item {
+    @apply flex items-center justify-between p-4;
+    @apply border-b border-gray-100 last:border-b-0;
+    @apply active:bg-gray-50 touch-manipulation;
+    @apply transition-colors duration-150;
+  }
+  
+  /* モバイル向けのナビゲーション */
+  .mobile-nav-item {
+    @apply flex items-center space-x-3 px-4 py-3;
+    @apply text-sm font-medium rounded-lg;
+    @apply active:bg-gray-100 touch-manipulation;
+    @apply transition-colors duration-150;
+  }
+  
+  /* モバイル向けのフォーム要素 */
+  .mobile-input {
+    @apply h-12 px-4 text-base;
+    @apply border border-gray-300 rounded-lg;
+    @apply focus:ring-2 focus:ring-blue-500 focus:border-blue-500;
+    @apply transition-all duration-150;
+  }
+  
+  .mobile-select {
+    @apply h-12 px-4 text-base;
+    @apply border border-gray-300 rounded-lg;
+    @apply focus:ring-2 focus:ring-blue-500 focus:border-blue-500;
+    @apply transition-all duration-150;
+  }
+  
+  .mobile-textarea {
+    @apply min-h-[96px] px-4 py-3 text-base;
+    @apply border border-gray-300 rounded-lg;
+    @apply focus:ring-2 focus:ring-blue-500 focus:border-blue-500;
+    @apply transition-all duration-150;
+  }
+  
+  /* モバイル向けのボタンスタイル */
+  .mobile-button {
+    @apply min-h-[44px] px-6 py-3 text-base font-medium;
+    @apply rounded-lg transition-all duration-150;
+    @apply active:scale-95 touch-manipulation;
+  }
+  
+  .mobile-button-primary {
+    @apply mobile-button bg-blue-600 text-white;
+    @apply hover:bg-blue-700 active:bg-blue-800;
+  }
+  
+  .mobile-button-secondary {
+    @apply mobile-button bg-gray-200 text-gray-900;
+    @apply hover:bg-gray-300 active:bg-gray-400;
+  }
+  
+  .mobile-button-outline {
+    @apply mobile-button border-2 border-gray-300 text-gray-700;
+    @apply hover:bg-gray-50 active:bg-gray-100;
+  }
+  
+  /* モバイル向けのヘッダースタイル */
+  .mobile-header {
+    @apply bg-white shadow-sm border-b border-gray-200;
+    @apply px-4 py-3 flex items-center justify-between;
+    @apply sticky top-0 z-40;
+  }
+  
+  /* モバイル向けのフッタースタイル */
+  .mobile-footer {
+    @apply bg-white border-t border-gray-200;
+    @apply px-4 py-3 flex items-center justify-between;
+    @apply sticky bottom-0 z-40;
+  }
+  
+  /* モバイル向けのモーダルスタイル */
+  .mobile-modal {
+    @apply fixed inset-0 z-50 flex items-end justify-center;
+    @apply bg-black bg-opacity-50;
+  }
+  
+  .mobile-modal-content {
+    @apply bg-white rounded-t-xl max-h-[90vh] w-full;
+    @apply overflow-y-auto smooth-scroll;
+  }
+  
+  /* モバイル向けのドロワースタイル */
+  .mobile-drawer {
+    @apply fixed inset-y-0 left-0 z-50 w-80 bg-white;
+    @apply transform transition-transform duration-300 ease-in-out;
+    @apply shadow-xl;
+  }
+  
+  .mobile-drawer-open {
+    @apply translate-x-0;
+  }
+  
+  .mobile-drawer-closed {
+    @apply -translate-x-full;
+  }
+  
+  /* モバイル向けのタブスタイル */
+  .mobile-tabs {
+    @apply flex border-b border-gray-200 bg-white;
+    @apply overflow-x-auto smooth-scroll;
+  }
+  
+  .mobile-tab {
+    @apply flex-1 min-w-0 px-4 py-3 text-sm font-medium;
+    @apply border-b-2 border-transparent text-gray-500;
+    @apply hover:text-gray-700 hover:border-gray-300;
+    @apply active:text-gray-900 active:border-gray-500;
+    @apply transition-colors duration-150;
+    @apply touch-manipulation;
+  }
+  
+  .mobile-tab-active {
+    @apply text-blue-600 border-blue-600;
+  }
+  
+  /* モバイル向けのアコーディオンスタイル */
+  .mobile-accordion {
+    @apply bg-white border border-gray-200 rounded-lg;
+    @apply overflow-hidden;
+  }
+  
+  .mobile-accordion-header {
+    @apply px-4 py-3 flex items-center justify-between;
+    @apply bg-gray-50 border-b border-gray-200;
+    @apply active:bg-gray-100 touch-manipulation;
+    @apply transition-colors duration-150;
+  }
+  
+  .mobile-accordion-content {
+    @apply px-4 py-3;
+  }
+}
+
+/* レスポンシブ対応 */
+@media (max-width: 768px) {
+  /* モバイル専用のスタイル */
+  .desktop-only {
+    display: none !important;
+  }
+  
+  /* フォントサイズの調整 */
+  .text-responsive {
+    @apply text-sm;
+  }
+  
+  /* パディングの調整 */
+  .p-responsive {
+    @apply p-4;
+  }
+  
+  /* マージンの調整 */
+  .m-responsive {
+    @apply m-2;
+  }
+  
+  /* グリッドの調整 */
+  .grid-responsive {
+    @apply grid-cols-1;
+  }
+}
+
+@media (min-width: 769px) {
+  /* デスクトップ専用のスタイル */
+  .mobile-only {
+    display: none !important;
+  }
+  
+  /* フォントサイズの調整 */
+  .text-responsive {
+    @apply text-base;
+  }
+  
+  /* パディングの調整 */
+  .p-responsive {
+    @apply p-6;
+  }
+  
+  /* マージンの調整 */
+  .m-responsive {
+    @apply m-4;
+  }
+  
+  /* グリッドの調整 */
+  .grid-responsive {
+    @apply grid-cols-2 lg:grid-cols-3;
+  }
+}
+
+

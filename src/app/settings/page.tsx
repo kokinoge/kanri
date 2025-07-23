@@ -1,128 +1,164 @@
 "use client";
 
-import ProtectedLayout from "@/components/ProtectedLayout";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
-import { Settings, Database, Users, Building2, Building } from "lucide-react";
+import { useState } from "react";
+import useSWR from "swr";
 import { useSession } from "next-auth/react";
+import ProtectedLayout from "@/components/ProtectedLayout";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { hasRequiredRole } from "@/lib/permissions";
 
-export default function SettingsPage() {
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
+
+const masterCategories = [
+  { id: "businessDivision", name: "事業部" },
+  { id: "platform", name: "媒体" },
+  { id: "genre", name: "ジャンル" },
+  { id: "operationType", name: "運用タイプ" },
+  { id: "salesDepartment", name: "営業部" },
+  { id: "agency", name: "代理店" },
+  { id: "salesChannel", name: "営業チャネル" },
+];
+
+function MasterDataTable({ category }: { category: string }) {
   const { data: session } = useSession();
+  const { data: masters, error, mutate } = useSWR(`/api/masters?category=${category}`, fetcher);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingMaster, setEditingMaster] = useState<any>(null);
+
+  const isAdmin = hasRequiredRole(session as any, "admin");
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const data = {
+      category,
+      value: formData.get("value") as string,
+      order: Number(formData.get("order")),
+    };
+
+    const url = editingMaster ? `/api/masters/${editingMaster.id}` : "/api/masters";
+    const method = editingMaster ? "PUT" : "POST";
+
+    await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+
+    mutate();
+    setIsModalOpen(false);
+    setEditingMaster(null);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (window.confirm("本当に削除しますか？")) {
+      await fetch(`/api/masters/${id}`, { method: "DELETE" });
+      mutate();
+    }
+  };
+
+  if (error) return <div>読み込みに失敗しました</div>;
+  if (!masters) return <div>読み込み中...</div>;
+
+  return (
+    <div>
+      {isAdmin && (
+        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+          <DialogTrigger asChild>
+            <Button onClick={() => setEditingMaster(null)}>新規追加</Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{editingMaster ? "編集" : "新規追加"}</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSubmit}>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="value" className="text-right">値</Label>
+                  <Input id="value" name="value" defaultValue={editingMaster?.value} className="col-span-3" />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="order" className="text-right">表示順</Label>
+                  <Input id="order" name="order" type="number" defaultValue={editingMaster?.order} className="col-span-3" />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button type="submit">保存</Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+      )}
+      <div className="mt-4">
+        <table className="min-w-full divide-y divide-gray-200">
+          {/* Table content */}
+           <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium">値</th>
+              <th className="px-6 py-3 text-left text-xs font-medium">表示順</th>
+              {isAdmin && <th className="px-6 py-3 text-right text-xs font-medium">アクション</th>}
+            </tr>
+          </thead>
+           <tbody className="bg-white divide-y divide-gray-200">
+            {masters.map((master: any) => (
+              <tr key={master.id}>
+                <td className="px-6 py-4">{master.value}</td>
+                <td className="px-6 py-4">{master.order}</td>
+                {isAdmin && (
+                  <td className="px-6 py-4 text-right">
+                    <Button variant="outline" size="sm" onClick={() => { setEditingMaster(master); setIsModalOpen(true); }}>編集</Button>
+                    <Button variant="destructive" size="sm" className="ml-2" onClick={() => handleDelete(master.id)}>削除</Button>
+                  </td>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+
+export default function MastersPage() {
+    const { data: session } = useSession();
+
+    if (!hasRequiredRole(session as any, "manager")) {
+        return (
+          <ProtectedLayout>
+            <h1 className="text-2xl font-bold">アクセス権がありません</h1>
+            <p>このページは管理者またはマネージャーのみが閲覧できます。</p>
+          </ProtectedLayout>
+        );
+    }
 
   return (
     <ProtectedLayout requiredRole="manager">
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">設定</h1>
-          <p className="text-gray-600 mt-2">システムの設定を管理します</p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* ユーザー管理 */}
-          {hasRequiredRole(session as any, "admin") && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Users className="mr-2 h-5 w-5" />
-                  ユーザー管理
-                </CardTitle>
-                <CardDescription>
-                  システムユーザーの作成・編集・権限管理を行います
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button asChild className="w-full">
-                  <Link href="/settings/users">
-                    ユーザー管理を開く
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* クライアント管理 */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Building2 className="mr-2 h-5 w-5" />
-                クライアント管理
-              </CardTitle>
-              <CardDescription>
-                クライアントの作成・編集・事業部設定を行います
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button asChild className="w-full">
-                <Link href="/settings/clients">
-                  クライアント管理を開く
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* 事業部管理 */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Building className="mr-2 h-5 w-5" />
-                事業部管理
-              </CardTitle>
-              <CardDescription>
-                事業部の作成・編集・予算設定・統計情報を管理します
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button asChild className="w-full">
-                <Link href="/settings/departments">
-                  事業部管理を開く
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* マスタ管理 */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Database className="mr-2 h-5 w-5" />
-                マスタ管理
-              </CardTitle>
-              <CardDescription>
-                事業部、媒体、運用タイプ、報酬体系などの基本データを管理します
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button asChild className="w-full">
-                <Link href="/settings/masters">
-                  マスタ管理を開く
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* 将来的な機能拡張用のプレースホルダー */}
-          {hasRequiredRole(session as any, "admin") && (
-            <Card className="opacity-50">
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Settings className="mr-2 h-5 w-5" />
-                  システム設定
-                </CardTitle>
-                <CardDescription>
-                  システム全体の設定（今後実装予定）
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button disabled className="w-full">
-                  準備中
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      </div>
+      <h1 className="text-2xl font-bold mb-6">マスタデータ管理</h1>
+      <Tabs defaultValue="department">
+        <TabsList>
+          {masterCategories.map((cat) => (
+            <TabsTrigger key={cat.id} value={cat.id}>{cat.name}</TabsTrigger>
+          ))}
+        </TabsList>
+        {masterCategories.map((cat) => (
+          <TabsContent key={cat.id} value={cat.id}>
+            <MasterDataTable category={cat.id} />
+          </TabsContent>
+        ))}
+      </Tabs>
     </ProtectedLayout>
   );
 } 

@@ -1,520 +1,546 @@
-
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import useSWR from "swr";
-import { useSession } from "next-auth/react";
+import Link from "next/link";
 import ProtectedLayout from "@/components/ProtectedLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MobileStatCard } from "@/components/ui/mobile-card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { formatCurrency, formatNumber } from "@/lib/utils";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from "recharts";
-import { Building2, Users, Target, TrendingUp } from "lucide-react";
-import { ImportExportDialog } from "@/components/ImportExportDialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from "recharts";
+import { Users, Building2, BarChart3, ArrowRight, Target } from "lucide-react";
+import { toast } from "sonner";
+import { formatCurrency, formatNumber, formatPercentage } from "@/lib/utils";
 
-interface DashboardStats {
-  overview: {
-    totalClients: number;
-    totalCampaigns: number;
-    activeCampaigns: number;
-    totalBudget: number;
-    totalSpend: number;
-    totalResults: number;
-    efficiency: number;
-  };
-  platformBreakdown: {
-    budget: Array<{ platform: string; amount: number }>;
-    results: Array<{ platform: string; spend: number; result: number }>;
-  };
-  monthlyTrends: Array<{
+interface ReportData {
+  budgets: Array<{
+    id: string;
     year: number;
     month: number;
-    budget: number;
-    spend: number;
-    result: number;
+    platform: string;
+    operationType: string;
+    revenueType: string;
+    amount: number;
+    targetKpi?: string;
+    targetValue?: number;
+    campaign: {
+      name: string;
+      client: {
+        name: string;
+      };
+    };
   }>;
-  clientPerformance: Array<{
+  results: Array<{
     id: string;
-    name: string;
-    totalBudget: number;
-    totalSpend: number;
-    totalResult: number;
-    efficiency: number;
+    year: number;
+    month: number;
+    platform: string;
+    operationType: string;
+    actualSpend: number;
+    actualResult: number;
+    campaign: {
+      name: string;
+      client: {
+        name: string;
+      };
+    };
   }>;
 }
 
-interface DepartmentData {
-  summary: {
-    department_count: number;
-    total_clients: number;
-    total_budget: number;
-    average_budget: number;
-  };
-  departments: Array<{
-    department: string;
-    client_count: number;
-    campaign_count: number;
-    total_budget: number;
-    total_actual_spend: number;
-  }>;
-}
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
-const fetcher = async (url: string) => {
-  console.log('Fetching:', url);
-  const res = await fetch(url);
-  
-  if (!res.ok) {
-    const errorText = await res.text();
-    console.error('Fetch error:', res.status, res.statusText, errorText);
-    throw new Error(`HTTP ${res.status}: ${res.statusText} - ${errorText}`);
-  }
-  
-  const data = await res.json();
-  console.log('Fetched data:', url, data);
-  return data;
-};
+export default function ReportsPage() {
+  const [startYear, setStartYear] = useState<string>("");
+  const [startMonth, setStartMonth] = useState<string>("");
+  const [endYear, setEndYear] = useState<string>("");
+  const [endMonth, setEndMonth] = useState<string>("");
+  const [selectedClient, setSelectedClient] = useState<string>("");
+  const [selectedPlatform, setSelectedPlatform] = useState<string>("");
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
+  const { data: budgets } = useSWR("/api/budgets", fetcher);
+  const { data: results } = useSWR("/api/results", fetcher);
+  const { data: clients } = useSWR("/api/clients", fetcher);
+  const { data: platforms } = useSWR("/api/masters?category=platform", fetcher);
 
-export default function Home() {
-  const { data: session, status } = useSession();
-  const [selectedYear, setSelectedYear] = useState<string>("all");
-  const [selectedMonth, setSelectedMonth] = useState<string>("all");
-  
-  // 初回ローディング状態のタイムアウト用state（Hooks規則に従い先頭で定義）
-  const [showLoadingOverride, setShowLoadingOverride] = useState(false);
-
-  const { data: stats, error, isLoading } = useSWR<DashboardStats>(
-    `/api/dashboard/stats?year=${selectedYear}&month=${selectedMonth}`,
-    fetcher,
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: true,
-      errorRetryCount: 3,
-      errorRetryInterval: 1000
-    }
-  );
-
-  const { data: departmentData, error: departmentError, isLoading: departmentLoading } = useSWR<DepartmentData>(
-    '/api/departments/stats',
-    fetcher,
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: true,
-      errorRetryCount: 3,
-      errorRetryInterval: 1000
-    }
-  );
-
-  // 5秒経過したらローディングを強制終了（Hooks規則に従い先頭で定義）
-  React.useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowLoadingOverride(true);
-    }, 5000);
-    
-    return () => clearTimeout(timer);
-  }, []);
-
-  // 年と月の選択肢を生成
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
   const months = Array.from({ length: 12 }, (_, i) => i + 1);
 
-  // 開発環境では認証チェックをスキップ
-  const isDevelopment = process.env.NODE_ENV === 'development';
+  // formatCurrency関数を削除（utils.tsから使用）
   
-  // 認証状態のチェック（開発環境では5秒でタイムアウト）
-  if (!isDevelopment && status === "loading" && !showLoadingOverride) {
-    return (
-      <ProtectedLayout>
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <div className="text-lg">認証情報を確認中...</div>
-          </div>
-        </div>
-      </ProtectedLayout>
-    );
-  }
-
-  // エラー状態の処理
-  if (error || departmentError) {
-    return (
-      <ProtectedLayout>
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="text-lg text-red-600 mb-2">データの読み込みに失敗しました</div>
-            <div className="text-sm text-gray-600 mb-4">
-              {error?.message || departmentError?.message || 'ネットワークエラーまたはサーバーエラーが発生しました'}
-            </div>
-            <Button onClick={() => window.location.reload()} variant="outline">
-              再読み込み
-            </Button>
-          </div>
-        </div>
-      </ProtectedLayout>
-    );
-  }
-
-  // データが少なくとも一つ取得できているか、5秒経過している場合はレンダリング
-  const shouldRender = showLoadingOverride || stats || departmentData || (!isLoading && !departmentLoading);
-
-  if (!shouldRender) {
-    return (
-      <ProtectedLayout>
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <div className="text-lg">データを読み込み中...</div>
-            <div className="text-sm text-gray-500 mt-2">
-              {isLoading && departmentLoading ? '両方のデータを取得中' : 
-               isLoading ? 'ダッシュボードデータを取得中' : '部門データを取得中'}
-            </div>
-          </div>
-        </div>
-      </ProtectedLayout>
-    );
-  }
-
-  // データの安全性チェックとフォールバック
-  const isDepartmentDataValid = departmentData && 
-    departmentData.summary && 
-    typeof departmentData.summary.department_count === 'number' &&
-    Array.isArray(departmentData.departments);
-
-  // データが未取得またはundefinedの場合のフォールバック
-  const safeStats = stats || {
-    overview: {
-      totalClients: 0,
-      totalCampaigns: 0,
-      activeCampaigns: 0,
-      totalBudget: 0,
-      totalSpend: 0,
-      totalResults: 0,
-      efficiency: 0
-    },
-    platformBreakdown: { budget: [], results: [] },
-    monthlyTrends: [],
-    clientPerformance: []
+  const formatMonth = (year: number, month: number) => {
+    return `${year}/${month.toString().padStart(2, '0')}`;
   };
 
-  const safeDepartmentData = departmentData || {
-    summary: {
-      department_count: 0,
-      total_clients: 0,
-      total_budget: 0,
-      average_budget: 0
-    },
-    departments: []
+  // フィルタリング処理
+  const filteredData = {
+    budgets: budgets?.filter((budget: any) => {
+      let include = true;
+      
+      if (startYear && startMonth) {
+        const startDate = new Date(parseInt(startYear), parseInt(startMonth) - 1);
+        const budgetDate = new Date(budget.year, budget.month - 1);
+        if (budgetDate < startDate) include = false;
+      }
+      
+      if (endYear && endMonth) {
+        const endDate = new Date(parseInt(endYear), parseInt(endMonth) - 1);
+        const budgetDate = new Date(budget.year, budget.month - 1);
+        if (budgetDate > endDate) include = false;
+      }
+      
+      if (selectedClient && selectedClient !== 'all' && budget.campaign.client.id !== selectedClient) include = false;
+      if (selectedPlatform && selectedPlatform !== 'all' && budget.platform !== selectedPlatform) include = false;
+      
+      return include;
+    }) || [],
+    
+    results: results?.filter((result: any) => {
+      let include = true;
+      
+      if (startYear && startMonth) {
+        const startDate = new Date(parseInt(startYear), parseInt(startMonth) - 1);
+        const resultDate = new Date(result.year, result.month - 1);
+        if (resultDate < startDate) include = false;
+      }
+      
+      if (endYear && endMonth) {
+        const endDate = new Date(parseInt(endYear), parseInt(endMonth) - 1);
+        const resultDate = new Date(result.year, result.month - 1);
+        if (resultDate > endDate) include = false;
+      }
+      
+      if (selectedClient && selectedClient !== 'all' && result.campaign.client.id !== selectedClient) include = false;
+      if (selectedPlatform && selectedPlatform !== 'all' && result.platform !== selectedPlatform) include = false;
+      
+      return include;
+    }) || [],
+  };
+
+  // 集計データの計算
+  const totalBudget = filteredData.budgets.reduce((sum: number, budget: any) => sum + Number(budget.amount), 0);
+  const totalSpend = filteredData.results.reduce((sum: number, result: any) => sum + Number(result.actualSpend), 0);
+  const totalResult = filteredData.results.reduce((sum: number, result: any) => sum + Number(result.actualResult), 0);
+  const roi = totalSpend > 0 ? ((totalResult - totalSpend) / totalSpend) * 100 : 0;
+
+  // 月別データの集計
+  const monthlyData = Array.from(
+    new Set([
+      ...filteredData.budgets.map((b: any) => `${b.year}-${b.month}`),
+      ...filteredData.results.map((r: any) => `${r.year}-${r.month}`)
+    ])
+  ).sort().map(period => {
+    const [year, month] = period.split('-').map(Number);
+    
+    const monthBudgets = filteredData.budgets.filter((b: any) => b.year === year && b.month === month);
+    const monthResults = filteredData.results.filter((r: any) => r.year === year && r.month === month);
+    
+    return {
+      period: `${year}/${month.toString().padStart(2, '0')}`,
+      budget: monthBudgets.reduce((sum: number, b: any) => sum + Number(b.amount), 0),
+      spend: monthResults.reduce((sum: number, r: any) => sum + Number(r.actualSpend), 0),
+      result: monthResults.reduce((sum: number, r: any) => sum + Number(r.actualResult), 0),
+    };
+  });
+
+  // プラットフォーム別データの集計
+  const platformData = Array.from(
+    new Set([
+      ...filteredData.budgets.map((b: any) => b.platform),
+      ...filteredData.results.map((r: any) => r.platform)
+    ])
+  ).map(platform => {
+    const platformBudgets = filteredData.budgets.filter((b: any) => b.platform === platform);
+    const platformResults = filteredData.results.filter((r: any) => r.platform === platform);
+    
+    return {
+      platform,
+      budget: platformBudgets.reduce((sum: number, b: any) => sum + Number(b.amount), 0),
+      spend: platformResults.reduce((sum: number, r: any) => sum + Number(r.actualSpend), 0),
+      result: platformResults.reduce((sum: number, r: any) => sum + Number(r.actualResult), 0),
+    };
+  }).filter((p: any) => p.budget > 0 || p.spend > 0);
+
+  const exportToCSV = () => {
+    const headers = ['年月', 'クライアント', '案件', 'プラットフォーム', '運用タイプ', '予算', '支出', '結果'];
+    const data: any[] = [];
+    
+    // 予算データ
+    filteredData.budgets.forEach((budget: any) => {
+      data.push([
+        `${budget.year}/${budget.month}`,
+        budget.campaign.client.name,
+        budget.campaign.name,
+        budget.platform,
+        budget.operationType,
+        budget.amount,
+        '',
+        ''
+      ]);
+    });
+    
+    // 実績データ
+    filteredData.results.forEach((result: any) => {
+      data.push([
+        `${result.year}/${result.month}`,
+        result.campaign.client.name,
+        result.campaign.name,
+        result.platform,
+        result.operationType,
+        '',
+        result.actualSpend,
+        result.actualResult
+      ]);
+    });
+    
+    const csvContent = [headers, ...data].map(row => row.join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `report_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
     <ProtectedLayout>
       <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-          <h1 className="text-2xl sm:text-3xl font-bold">ダッシュボード</h1>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <ImportExportDialog />
-            <Select value={selectedYear} onValueChange={setSelectedYear}>
-              <SelectTrigger className="w-full sm:w-32">
-                <SelectValue placeholder="年を選択" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">全期間</SelectItem>
-                {years.map((year) => (
-                  <SelectItem key={year} value={year.toString()}>
-                    {year}年
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={selectedMonth} onValueChange={setSelectedMonth} disabled={!selectedYear}>
-              <SelectTrigger className="w-full sm:w-32">
-                <SelectValue placeholder="月を選択" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">全て</SelectItem>
-                {months.map((month) => (
-                  <SelectItem key={month} value={month.toString()}>
-                    {month}月
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        <div className="flex justify-between items-center">
+          <h1 className="text-3xl font-bold">レポート</h1>
+          <Button onClick={exportToCSV}>CSV出力</Button>
         </div>
 
-        {/* 統計カード - モバイル対応 */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <MobileStatCard
-            label="総クライアント数"
-            value={formatNumber(safeStats.overview.totalClients)}
-            icon={<Building2 className="w-8 h-8 text-blue-500" />}
-            className="md:hidden"
-          />
-          <MobileStatCard
-            label="総案件数"
-            value={formatNumber(safeStats.overview.totalCampaigns)}
-            icon={<Target className="w-8 h-8 text-green-500" />}
-            className="md:hidden"
-          />
-          <MobileStatCard
-            label="総予算"
-            value={formatCurrency(safeStats.overview.totalBudget)}
-            icon={<TrendingUp className="w-8 h-8 text-purple-500" />}
-            className="md:hidden"
-          />
-          <MobileStatCard
-            label="効率性"
-            value={`${(safeStats.overview.efficiency * 100).toFixed(1)}%`}
-            icon={<Users className="w-8 h-8 text-orange-500" />}
-            className="md:hidden"
-          />
-
-          {/* デスクトップ版の統計カード */}
-          <Card className="hidden md:block">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">総クライアント数</CardTitle>
-              <Building2 className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-                              <div className="text-2xl font-bold">{formatNumber(safeStats.overview.totalClients)}</div>
-            </CardContent>
-          </Card>
-
-          <Card className="hidden md:block">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">総案件数</CardTitle>
-              <Target className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{formatNumber(safeStats.overview.totalCampaigns)}</div>
-              <p className="text-xs text-muted-foreground">
-                うち実行中: {formatNumber(safeStats.overview.activeCampaigns)}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="hidden md:block">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">総予算</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-                              <div className="text-2xl font-bold">{formatCurrency(safeStats.overview.totalBudget)}</div>
-                <p className="text-xs text-muted-foreground">
-                  支出: {formatCurrency(safeStats.overview.totalSpend)}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="hidden md:block">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">効率性</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                                  {(safeStats.overview.efficiency * 100).toFixed(1)}%
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  結果: {formatCurrency(safeStats.overview.totalResults)}
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* 事業部統計 */}
-        {isDepartmentDataValid && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <MobileStatCard
-              label="事業部数"
-              value={formatNumber(safeDepartmentData.summary.department_count)}
-              className="md:hidden"
-            />
-            <MobileStatCard
-              label="平均予算"
-              value={formatCurrency(safeDepartmentData.summary.average_budget)}
-              className="md:hidden"
-            />
-
-            <Card className="hidden md:block">
+        {/* 分析レポートナビゲーション */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Link href="/reports/clients">
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">事業部数</CardTitle>
+                <CardTitle className="text-sm font-medium">クライアント別分析</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold mb-2">
+                  <BarChart3 className="h-8 w-8 text-blue-600" />
+                </div>
+                <p className="text-xs text-muted-foreground mb-3">
+                  クライアントごとの詳細な実績分析とパフォーマンス評価
+                </p>
+                <div className="flex items-center text-sm text-blue-600">
+                  詳細を見る
+                  <ArrowRight className="h-4 w-4 ml-1" />
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link href="/reports/departments">
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">事業部別分析</CardTitle>
                 <Building2 className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{formatNumber(safeDepartmentData.summary.department_count)}</div>
+                <div className="text-2xl font-bold mb-2">
+                  <BarChart3 className="h-8 w-8 text-green-600" />
+                </div>
+                <p className="text-xs text-muted-foreground mb-3">
+                  事業部ごとの詳細な実績分析とパフォーマンス評価
+                </p>
+                <div className="flex items-center text-sm text-green-600">
+                  詳細を見る
+                  <ArrowRight className="h-4 w-4 ml-1" />
+                </div>
               </CardContent>
             </Card>
+          </Link>
 
-            <Card className="hidden md:block">
+          <Link href="/reports/departments/budget">
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">平均予算</CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium">事業部予算分析</CardTitle>
+                <Target className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{formatCurrency(safeDepartmentData.summary.average_budget)}</div>
+                <div className="text-2xl font-bold mb-2">
+                  <BarChart3 className="h-8 w-8 text-orange-600" />
+                </div>
+                <p className="text-xs text-muted-foreground mb-3">
+                  事業部ごとの詳細な予算分析と配分状況
+                </p>
+                <div className="flex items-center text-sm text-orange-600">
+                  詳細を見る
+                  <ArrowRight className="h-4 w-4 ml-1" />
+                </div>
               </CardContent>
             </Card>
-          </div>
-        )}
+          </Link>
 
-        {/* 月別トレンド */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">統合レポート</CardTitle>
+              <BarChart3 className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold mb-2">
+                <BarChart3 className="h-8 w-8 text-purple-600" />
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                全体的な実績分析とトレンド把握（このページ）
+              </p>
+              <div className="flex items-center text-sm text-purple-600">
+                現在のページ
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* フィルター */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">月別トレンド（過去12ヶ月）</CardTitle>
+            <CardTitle>フィルター条件</CardTitle>
           </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-                              <LineChart data={safeStats.monthlyTrends.map(item => ({
-                ...item,
-                period: `${item.year}/${item.month.toString().padStart(2, '0')}`,
-              }))}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="period" 
-                  fontSize={12}
-                  tick={{ fontSize: 10 }}
-                />
-                <YAxis 
-                  fontSize={12}
-                  tick={{ fontSize: 10 }}
-                />
-                <Tooltip 
-                  formatter={(value: number) => formatCurrency(value)}
-                  labelStyle={{ fontSize: 12 }}
-                  contentStyle={{ fontSize: 12 }}
-                />
-                <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Line type="monotone" dataKey="budget" stroke="#8884d8" name="予算" strokeWidth={2} />
-                <Line type="monotone" dataKey="spend" stroke="#82ca9d" name="支出" strokeWidth={2} />
-                <Line type="monotone" dataKey="result" stroke="#ffc658" name="結果" strokeWidth={2} />
-              </LineChart>
-            </ResponsiveContainer>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <Label>開始年月</Label>
+                <div className="flex space-x-2">
+                  <Select value={startYear} onValueChange={setStartYear}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="年" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {years.map(year => (
+                        <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={startMonth} onValueChange={setStartMonth}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="月" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {months.map(month => (
+                        <SelectItem key={month} value={month.toString()}>{month}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div>
+                <Label>終了年月</Label>
+                <div className="flex space-x-2">
+                  <Select value={endYear} onValueChange={setEndYear}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="年" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {years.map(year => (
+                        <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={endMonth} onValueChange={setEndMonth}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="月" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {months.map(month => (
+                        <SelectItem key={month} value={month.toString()}>{month}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div>
+                <Label>クライアント</Label>
+                <Select value={selectedClient} onValueChange={setSelectedClient}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="全て" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">全て</SelectItem>
+                    {clients?.map((client: any) => (
+                      <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label>プラットフォーム</Label>
+                <Select value={selectedPlatform} onValueChange={setSelectedPlatform}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="全て" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">全て</SelectItem>
+                    {platforms?.map((platform: any) => (
+                      <SelectItem key={platform.id} value={platform.value}>{platform.value}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setStartYear("");
+                setStartMonth("");
+                setEndYear("");
+                setEndMonth("");
+                setSelectedClient("all");
+                setSelectedPlatform("all");
+              }}
+            >
+              フィルターリセット
+            </Button>
           </CardContent>
         </Card>
 
-        {/* 事業部別パフォーマンス */}
-        {isDepartmentDataValid && (
+        {/* サマリー */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">事業部別パフォーマンス</CardTitle>
+              <CardTitle>総予算</CardTitle>
             </CardHeader>
             <CardContent>
-              {safeDepartmentData.departments.length > 0 ? (
-                <ResponsiveContainer width="100%" height={250}>
-                  <BarChart
-                    data={safeDepartmentData.departments.map(dept => ({
-                      name: dept.department && dept.department.length > 8 ? dept.department.slice(0, 8) + '...' : dept.department,
-                      budget: Number(dept.total_budget || 0),
-                      spend: Number(dept.total_actual_spend || 0),
-                      clients: Number(dept.client_count || 0),
-                      campaigns: Number(dept.campaign_count || 0),
-                    }))}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis 
-                      dataKey="name" 
-                      fontSize={12}
-                      tick={{ fontSize: 10 }}
-                    />
-                    <YAxis 
-                      fontSize={12}
-                      tick={{ fontSize: 10 }}
-                    />
-                    <Tooltip 
-                      formatter={(value: number, name: string) => [
-                        name === 'clients' || name === 'campaigns' ? value : formatCurrency(value), 
-                        name === 'budget' ? '予算' : 
-                        name === 'spend' ? '支出' : 
-                        name === 'clients' ? 'クライアント数' : '案件数'
-                      ]}
-                      labelStyle={{ fontSize: 12 }}
-                      contentStyle={{ fontSize: 12 }}
-                    />
-                    <Legend wrapperStyle={{ fontSize: 12 }} />
-                    <Bar dataKey="budget" fill="#8884d8" name="予算" />
-                    <Bar dataKey="spend" fill="#82ca9d" name="支出" />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex items-center justify-center h-[250px] text-gray-500">
-                  データがありません
-                </div>
-              )}
+              <div className="text-2xl font-bold">{formatCurrency(totalBudget)}</div>
             </CardContent>
           </Card>
-        )}
 
-        {/* プラットフォーム別分析 - モバイル対応 */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* プラットフォーム別予算分布 */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">プラットフォーム別予算分布</CardTitle>
+              <CardTitle>総支出</CardTitle>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={200}>
-                <PieChart>
-                  <Pie
-                    data={safeStats.platformBreakdown.budget.map(item => ({
-                      ...item,
-                      amount: Number(item.amount),
-                    }))}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ platform, percent }: any) => `${platform} ${((percent || 0) * 100).toFixed(0)}%`}
-                    outerRadius={60}
-                    fill="#8884d8"
-                    dataKey="amount"
-                  >
-                    {safeStats.platformBreakdown.budget.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
+              <div className="text-2xl font-bold text-red-600">{formatCurrency(totalSpend)}</div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>総結果</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">{formatCurrency(totalResult)}</div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>ROI</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className={`text-2xl font-bold ${roi >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {roi.toFixed(1)}%
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* チャート */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>月別トレンド</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={monthlyData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="period" />
+                  <YAxis />
                   <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                </PieChart>
+                  <Legend />
+                  <Line type="monotone" dataKey="budget" stroke="#8884d8" name="予算" />
+                  <Line type="monotone" dataKey="spend" stroke="#82ca9d" name="支出" />
+                  <Line type="monotone" dataKey="result" stroke="#ffc658" name="結果" />
+                </LineChart>
               </ResponsiveContainer>
             </CardContent>
           </Card>
 
-          {/* クライアント別パフォーマンス */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">クライアント別パフォーマンス</CardTitle>
+              <CardTitle>プラットフォーム別パフォーマンス</CardTitle>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={safeStats.clientPerformance.slice(0, 5)}>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={platformData}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    dataKey="name" 
-                    fontSize={12}
-                    tick={{ fontSize: 10 }}
-                  />
-                  <YAxis 
-                    fontSize={12}
-                    tick={{ fontSize: 10 }}
-                  />
-                  <Tooltip 
-                    formatter={(value: number) => formatCurrency(value)}
-                    labelStyle={{ fontSize: 12 }}
-                    contentStyle={{ fontSize: 12 }}
-                  />
-                  <Legend wrapperStyle={{ fontSize: 12 }} />
-                  <Bar dataKey="totalBudget" fill="#8884d8" name="予算" />
-                  <Bar dataKey="totalSpend" fill="#82ca9d" name="支出" />
-                  <Bar dataKey="totalResult" fill="#ffc658" name="結果" />
+                  <XAxis dataKey="platform" />
+                  <YAxis />
+                  <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                  <Legend />
+                  <Bar dataKey="budget" fill="#8884d8" name="予算" />
+                  <Bar dataKey="spend" fill="#82ca9d" name="支出" />
+                  <Bar dataKey="result" fill="#ffc658" name="結果" />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
           </Card>
         </div>
+
+        {/* 詳細テーブル */}
+        <Card>
+          <CardHeader>
+            <CardTitle>詳細データ</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="max-h-96 overflow-y-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>年月</TableHead>
+                    <TableHead>クライアント</TableHead>
+                    <TableHead>案件</TableHead>
+                    <TableHead>プラットフォーム</TableHead>
+                    <TableHead>運用タイプ</TableHead>
+                    <TableHead className="text-right">予算</TableHead>
+                    <TableHead className="text-right">支出</TableHead>
+                    <TableHead className="text-right">結果</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {/* 予算データ */}
+                  {filteredData.budgets.map((budget: any) => (
+                    <TableRow key={`budget-${budget.id}`}>
+                      <TableCell>{budget.year}/{budget.month}</TableCell>
+                      <TableCell>{budget.campaign.client.name}</TableCell>
+                      <TableCell>{budget.campaign.name}</TableCell>
+                      <TableCell>{budget.platform}</TableCell>
+                      <TableCell>{budget.operationType}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(Number(budget.amount))}</TableCell>
+                      <TableCell className="text-right">-</TableCell>
+                      <TableCell className="text-right">-</TableCell>
+                    </TableRow>
+                  ))}
+                  {/* 実績データ */}
+                  {filteredData.results.map((result: any) => (
+                    <TableRow key={`result-${result.id}`}>
+                      <TableCell>{result.year}/{result.month}</TableCell>
+                      <TableCell>{result.campaign.client.name}</TableCell>
+                      <TableCell>{result.campaign.name}</TableCell>
+                      <TableCell>{result.platform}</TableCell>
+                      <TableCell>{result.operationType}</TableCell>
+                      <TableCell className="text-right">-</TableCell>
+                      <TableCell className="text-right">{formatCurrency(Number(result.actualSpend))}</TableCell>
+                      <TableCell className="text-right">{formatNumber(Number(result.actualResult))}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </ProtectedLayout>
   );
-}
+} 

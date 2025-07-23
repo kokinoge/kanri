@@ -1,89 +1,132 @@
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { auth } from "@/auth";
-import { hasRequiredRole } from "@/lib/permissions";
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const clientId = searchParams.get("clientId");
+    const clientId = searchParams.get('clientId');
+    const businessDivision = searchParams.get('businessDivision');
 
-    const where = clientId ? { clientId } : {};
+    const whereClause: any = {};
+    
+    if (clientId) {
+      whereClause.clientId = clientId;
+    }
+    
+    if (businessDivision) {
+      whereClause.client = {
+        businessDivision: businessDivision
+      };
+    }
 
     const campaigns = await prisma.campaign.findMany({
-      where,
+      where: whereClause,
       include: {
-        client: true,
+        client: {
+          select: {
+            id: true,
+            name: true,
+            businessDivision: true
+          }
+        },
+        budgets: {
+          select: {
+            id: true,
+            amount: true
+          }
+        },
+        results: {
+          select: {
+            id: true,
+            actualSpend: true,
+            actualResult: true
+          }
+        }
       },
       orderBy: [
-        { startYear: "desc" },
-        { startMonth: "desc" },
-      ],
+        { startYear: 'desc' },
+        { startMonth: 'desc' },
+        { name: 'asc' }
+      ]
     });
 
-    // totalBudgetを数値型に変換
-    const campaignsWithNumberBudget = campaigns.map(campaign => ({
-      ...campaign,
-      totalBudget: Number(campaign.totalBudget) || 0
-    }));
-
-    return NextResponse.json(campaignsWithNumberBudget);
+    return NextResponse.json(campaigns);
   } catch (error) {
-    console.error("[CAMPAIGNS_GET]", error);
-    return new NextResponse("Internal Server Error", { status: 500 });
+    console.error('案件取得エラー:', error);
+    return NextResponse.json(
+      { error: '案件データの取得に失敗しました' },
+      { status: 500 }
+    );
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    // 認証チェックを一時的にコメントアウト（開発環境）
-    // const session = await auth();
-    // if (!hasRequiredRole(session, "manager")) {
-    //   return new NextResponse("Unauthorized", { status: 401 });
-    // }
-
     const body = await request.json();
-    const { clientId, name, purpose, businessDivision, startYear, startMonth, endYear, endMonth, totalBudget } = body;
+    const { clientId, name, purpose, startYear, startMonth, endYear, endMonth, totalBudget } = body;
 
-    if (!clientId || !name || !startYear || !startMonth || !totalBudget) {
-      return new NextResponse("Missing required fields", { status: 400 });
+    if (!clientId || !name || !name.trim()) {
+      return NextResponse.json(
+        { error: 'クライアントIDと案件名は必須です' },
+        { status: 400 }
+      );
     }
 
-    // 2025年以降の制限
-    if (startYear < 2025) {
-      return new NextResponse("Start year must be 2025 or later", { status: 400 });
+    // クライアント存在チェック
+    const client = await prisma.client.findUnique({
+      where: { id: clientId }
+    });
+
+    if (!client) {
+      return NextResponse.json(
+        { error: '指定されたクライアントが見つかりません' },
+        { status: 400 }
+      );
     }
 
-    // 月の範囲チェック
-    if (startMonth < 1 || startMonth > 12) {
-      return new NextResponse("Start month must be between 1 and 12", { status: 400 });
-    }
-
-    if (endYear && endMonth) {
-      if (endYear < 2025) {
-        return new NextResponse("End year must be 2025 or later", { status: 400 });
+    // 同名案件の重複チェック（同一クライアント内）
+    const existingCampaign = await prisma.campaign.findFirst({
+      where: { 
+        clientId,
+        name: name.trim()
       }
-      if (endMonth < 1 || endMonth > 12) {
-        return new NextResponse("End month must be between 1 and 12", { status: 400 });
-      }
+    });
+
+    if (existingCampaign) {
+      return NextResponse.json(
+        { error: '同名の案件が既に存在します' },
+        { status: 400 }
+      );
     }
 
     const campaign = await prisma.campaign.create({
       data: {
         clientId,
-        name,
-        purpose,
-        startYear: Number(startYear),
-        startMonth: Number(startMonth),
-        endYear: endYear ? Number(endYear) : null,
-        endMonth: endMonth ? Number(endMonth) : null,
-        totalBudget: Number(totalBudget),
+        name: name.trim(),
+        purpose: purpose || '',
+        startYear: startYear || new Date().getFullYear(),
+        startMonth: startMonth || new Date().getMonth() + 1,
+        endYear: endYear || null,
+        endMonth: endMonth || null,
+        totalBudget: totalBudget ? parseFloat(totalBudget.toString()) : 0
       },
+      include: {
+        client: {
+          select: {
+            id: true,
+            name: true,
+            businessDivision: true
+          }
+        }
+      }
     });
 
-    return NextResponse.json(campaign);
+    return NextResponse.json(campaign, { status: 201 });
   } catch (error) {
-    console.error("[CAMPAIGNS_POST]", error);
-    return new NextResponse("Internal Server Error", { status: 500 });
+    console.error('案件作成エラー:', error);
+    return NextResponse.json(
+      { error: '案件の作成に失敗しました' },
+      { status: 500 }
+    );
   }
 } 

@@ -1,0 +1,4 @@
+app.backup/
+*.backup
+scripts/
+tests/

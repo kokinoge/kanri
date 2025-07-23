@@ -1,136 +1,95 @@
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { auth } from "@/auth";
-import { hasRequiredRole } from "@/lib/permissions";
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
 
-export async function GET(
-  request: Request,
+// 予算削除
+export async function DELETE(
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await auth();
-    if (!hasRequiredRole(session, "member")) {
-      return new NextResponse("Unauthorized", { status: 401 });
-    }
+    const { id } = params;
 
+    // 予算が存在するかチェック
     const budget = await prisma.budget.findUnique({
-      where: { id: params.id },
-      include: {
-        campaign: {
-          include: {
-            client: true,
-          },
-        },
-      },
+      where: { id }
     });
 
     if (!budget) {
-      return new NextResponse("Budget not found", { status: 404 });
+      return NextResponse.json(
+        { error: '指定された予算が見つかりません' },
+        { status: 404 }
+      );
     }
 
-    return NextResponse.json(budget);
+    // 関連する実績データがあるかチェック（オプション）
+    const relatedResults = await prisma.result.count({
+      where: { campaignId: budget.campaignId }
+    });
+
+    if (relatedResults > 0) {
+      return NextResponse.json(
+        { error: 'この予算には関連する実績データがあるため削除できません' },
+        { status: 400 }
+      );
+    }
+
+    // 予算を削除
+    await prisma.budget.delete({
+      where: { id }
+    });
+
+    return NextResponse.json(
+      { message: '予算を削除しました' },
+      { status: 200 }
+    );
   } catch (error) {
-    console.error("[BUDGET_GET]", error);
-    return new NextResponse("Internal Server Error", { status: 500 });
+    console.error('予算削除エラー:', error);
+    return NextResponse.json(
+      { error: '予算の削除に失敗しました' },
+      { status: 500 }
+    );
   }
 }
 
-export async function PUT(
-  request: Request,
+// 予算詳細取得
+export async function GET(
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    // 一時的に認証チェックをスキップ（開発時のみ）
-    /*
-    const session = await auth();
-    if (!hasRequiredRole(session, "manager")) {
-      return new NextResponse("Unauthorized", { status: 401 });
-    }
-    */
-
     const { id } = params;
-    const body = await request.json();
-    console.log('[BUDGETS_UPDATE_API] PUT request data:', body);
-    
-    const {
-      campaignId,
-      yearMonth,
-      year: inputYear,
-      month: inputMonth,
-      amount,
-      platform,
-      operationType,
-      budgetType,
-      targetKpi,
-      targetValue
-    } = body;
 
-    // 年月データの処理
-    let finalYear = inputYear;
-    let finalMonth = inputMonth;
-    
-    if (yearMonth && !inputYear && !inputMonth) {
-      const [yearStr, monthStr] = yearMonth.split('-');
-      finalYear = parseInt(yearStr);
-      finalMonth = parseInt(monthStr);
-    }
-
-    // 更新データの構築
-    const updateData: any = {
-      updatedAt: new Date()
-    };
-
-    if (campaignId !== undefined) updateData.campaignId = campaignId;
-    if (finalYear !== undefined) updateData.year = finalYear;
-    if (finalMonth !== undefined) updateData.month = finalMonth;
-    if (amount !== undefined) updateData.amount = Number(amount);
-    if (platform !== undefined) updateData.platform = platform;
-    if (operationType !== undefined) updateData.operationType = operationType;
-    if (budgetType !== undefined) updateData.budgetType = budgetType;
-    if (targetKpi !== undefined) updateData.targetKpi = targetKpi;
-    if (targetValue !== undefined) updateData.targetValue = targetValue ? Number(targetValue) : null;
-
-    console.log('[BUDGETS_UPDATE_API] 更新データ:', updateData);
-
-    const budget = await prisma.budget.update({
+    const budget = await prisma.budget.findUnique({
       where: { id },
-      data: updateData,
       include: {
         campaign: {
-          include: {
-            client: true
+          select: {
+            id: true,
+            name: true,
+            client: {
+              select: {
+                id: true,
+                name: true
+              }
+            }
           }
         }
       }
     });
 
+    if (!budget) {
+      return NextResponse.json(
+        { error: '指定された予算が見つかりません' },
+        { status: 404 }
+      );
+    }
+
     return NextResponse.json(budget);
   } catch (error) {
-    console.error("[BUDGET_PUT]", error);
-    return new NextResponse("Internal Server Error", { status: 500 });
-  }
-}
-
-export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
-  try {
-    // 一時的に認証チェックをスキップ（開発時のみ）
-    /*
-    const session = await auth();
-    if (!hasRequiredRole(session, "manager")) {
-      return new NextResponse("Unauthorized", { status: 401 });
-    }
-    */
-
-    await prisma.budget.delete({
-      where: { id: params.id },
-    });
-
-    return new NextResponse(null, { status: 204 });
-  } catch (error) {
-    console.error("[BUDGET_DELETE]", error);
-    return new NextResponse("Internal Server Error", { status: 500 });
+    console.error('予算詳細取得エラー:', error);
+    return NextResponse.json(
+      { error: '予算詳細の取得に失敗しました' },
+      { status: 500 }
+    );
   }
 } 
