@@ -1,62 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
-// サンプルユーザーデータ
-const SAMPLE_USERS = [
-  {
-    id: '1',
-    name: '管理者ユーザー',
-    email: 'admin@example.com',
-    role: 'admin',
-    department: '管理部',
-    isActive: true
-  },
-  {
-    id: '2',
-    name: '田中太郎',
-    email: 'tanaka@example.com',
-    role: 'manager',
-    department: 'SNSメディア事業部',
-    isActive: true
-  },
-  {
-    id: '3',
-    name: '佐藤花子',
-    email: 'sato@example.com',
-    role: 'manager',
-    department: 'デジタルマーケティング事業部',
-    isActive: true
-  },
-  {
-    id: '4',
-    name: '鈴木次郎',
-    email: 'suzuki@example.com',
-    role: 'member',
-    department: 'SNSメディア事業部',
-    isActive: true
-  },
-  {
-    id: '5',
-    name: '高橋美咲',
-    email: 'takahashi@example.com',
-    role: 'member',
-    department: 'コンテンツ事業部',
-    isActive: true
-  }
-];
-
 export async function GET(request: NextRequest) {
   try {
-    // アクティブユーザーのみを返す
-    const assignableUsers = SAMPLE_USERS.filter(user => user.isActive);
+    console.log('[ASSIGNABLE_USERS_API] 割り当て可能ユーザー取得開始');
 
-    console.log('[ASSIGNABLE_USERS_API] 割り当て可能ユーザーを返却:', assignableUsers.length, '件');
-    return NextResponse.json(assignableUsers);
+    // アクティブユーザーを取得
+    const users = await prisma.user.findMany({
+      where: {
+        isActive: true
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        department: true,
+        isActive: true
+      },
+      orderBy: [
+        { role: 'asc' },  // admin -> manager -> member の順
+        { name: 'asc' }
+      ]
+    });
+
+    console.log('[ASSIGNABLE_USERS_API] 割り当て可能ユーザーを返却:', users.length, '件');
+    return NextResponse.json(users);
   } catch (error) {
-    console.error('割り当て可能ユーザー取得エラー:', error);
+    console.error('[ASSIGNABLE_USERS_API] 割り当て可能ユーザー取得エラー:', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      timestamp: new Date().toISOString()
+    });
+    
     return NextResponse.json(
-      { error: '割り当て可能ユーザーの取得に失敗しました' },
+      { 
+        error: '割り当て可能ユーザーの取得に失敗しました',
+        details: error instanceof Error ? error.message : String(error),
+        timestamp: new Date().toISOString()
+      },
       { status: 500 }
     );
   }

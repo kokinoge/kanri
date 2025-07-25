@@ -5,16 +5,46 @@ export const dynamic = 'force-dynamic'
 
 const JWT_SECRET = process.env.NEXTAUTH_SECRET || "fallback-secret-key"
 
+// 動的URL解決関数
+function resolveBaseUrl(request: NextRequest): string {
+  // 1. 環境変数から取得（推奨）
+  if (process.env.NEXTAUTH_URL) {
+    return process.env.NEXTAUTH_URL
+  }
+  
+  // 2. Vercelの場合、VERCEL_URLを使用
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`
+  }
+  
+  // 3. リクエストヘッダーから動的に生成
+  const protocol = request.headers.get('x-forwarded-proto') || 
+                  (request.url.startsWith('https') ? 'https' : 'http')
+  const host = request.headers.get('x-forwarded-host') || 
+               request.headers.get('host') || 
+               'localhost:3000'
+  
+  return `${protocol}://${host}`
+}
+
 // 詳細ログ関数
 function logRequest(req: NextRequest, context: string) {
   const url = new URL(req.url)
+  const baseUrl = resolveBaseUrl(req)
+  
   console.log(`[AUTH_${context}]`, {
     method: req.method,
     pathname: url.pathname,
     searchParams: Object.fromEntries(url.searchParams),
     userAgent: req.headers.get('user-agent'),
+    baseUrl,
+    env: process.env.NODE_ENV,
     timestamp: new Date().toISOString(),
-    env: process.env.NODE_ENV
+    headers: {
+      'x-forwarded-proto': req.headers.get('x-forwarded-proto'),
+      'x-forwarded-host': req.headers.get('x-forwarded-host'),
+      'host': req.headers.get('host')
+    }
   })
 }
 
@@ -27,11 +57,13 @@ async function handleSignIn(request: NextRequest) {
     if (request.method === 'GET') {
       const url = new URL(request.url)
       const callbackUrl = url.searchParams.get('callbackUrl') || '/'
-      const redirectUrl = new URL(`/login?callbackUrl=${encodeURIComponent(callbackUrl)}`, request.url)
+      const baseUrl = resolveBaseUrl(request)
+      const redirectUrl = new URL(`/login?callbackUrl=${encodeURIComponent(callbackUrl)}`, baseUrl)
       
       console.log('[AUTH_SIGNIN_REDIRECT]', {
         originalUrl: request.url,
         callbackUrl,
+        baseUrl,
         redirectTo: redirectUrl.toString()
       })
       
@@ -42,7 +74,11 @@ async function handleSignIn(request: NextRequest) {
     const body = await request.json()
     const { email, password } = body
 
-    console.log("AUTH: Attempting login with", { email, env: process.env.NODE_ENV })
+    console.log("AUTH: Attempting login with", { 
+      email, 
+      env: process.env.NODE_ENV,
+      baseUrl: resolveBaseUrl(request)
+    })
 
     let isValid = false
     
@@ -74,10 +110,14 @@ async function handleSignIn(request: NextRequest) {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
-        maxAge: 30 * 24 * 60 * 60 // 30 days
+        maxAge: 30 * 24 * 60 * 60, // 30 days
+        domain: process.env.NODE_ENV === 'production' ? undefined : 'localhost'
       })
 
-      console.log("AUTH: Login successful")
+      console.log("AUTH: Login successful", {
+        cookieSet: true,
+        secure: process.env.NODE_ENV === 'production'
+      })
       return response
     } else {
       console.log("AUTH: Login failed - invalid credentials")
@@ -92,6 +132,36 @@ async function handleSignIn(request: NextRequest) {
   }
 }
 
+// サインアウト処理
+async function handleSignOut(request: NextRequest) {
+  try {
+    logRequest(request, 'SIGNOUT')
+    
+    const response = NextResponse.json({ 
+      success: true,
+      message: "Signed out successfully" 
+    })
+    
+    // Cookieを削除
+    response.cookies.set('next-auth.session-token', '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 0,
+      domain: process.env.NODE_ENV === 'production' ? undefined : 'localhost'
+    })
+    
+    console.log("AUTH: Signout successful")
+    return response
+  } catch (error) {
+    console.error("AUTH: Signout error", error)
+    return NextResponse.json({ 
+      error: "Signout error", 
+      details: error instanceof Error ? error.message : String(error) 
+    }, { status: 500 })
+  }
+}
+
 // セッション取得処理
 async function handleSession(request: NextRequest) {
   try {
@@ -100,24 +170,20 @@ async function handleSession(request: NextRequest) {
     const token = request.cookies.get('next-auth.session-token')?.value
     
     if (!token) {
+      console.log('[AUTH_SESSION] No token found')
       return NextResponse.json({ user: null })
     }
 
     const decoded = verify(token, JWT_SECRET) as any
+    console.log('[AUTH_SESSION] Token verified successfully', {
+      userId: decoded.id,
+      email: decoded.email
+    })
     return NextResponse.json({ user: decoded })
   } catch (error) {
     console.error("AUTH: Session error", error)
     return NextResponse.json({ user: null })
   }
-}
-
-// ログアウト処理
-async function handleSignOut(request: NextRequest) {
-  logRequest(request, 'SIGNOUT')
-  
-  const response = NextResponse.json({ success: true })
-  response.cookies.delete('next-auth.session-token')
-  return response
 }
 
 export async function GET(request: NextRequest) {
@@ -183,16 +249,15 @@ export async function GET(request: NextRequest) {
     // デフォルトレスポンス
     console.log('[AUTH_DEFAULT_RESPONSE]', 'No specific handler matched')
     return NextResponse.json({ 
-      message: "Auth API", 
-      availableEndpoints: ["signin", "signout", "session"],
-      receivedPath: pathname,
-      receivedSegments: pathSegments,
-      receivedAction: action,
-      debug: {
-        method: 'GET',
-        timestamp: new Date().toISOString(),
-        env: process.env.NODE_ENV
-      }
+      message: "Auth API",
+      availableEndpoints: [
+        "/api/auth/signin",
+        "/api/auth/signout", 
+        "/api/auth/session"
+      ],
+      currentPath: pathname,
+      detectedAction: action,
+      baseUrl: resolveBaseUrl(request)
     })
     
   } catch (error) {
@@ -250,7 +315,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ 
       error: "Invalid action", 
       receivedPath: pathname,
-      receivedAction: action 
+      receivedAction: action,
+      baseUrl: resolveBaseUrl(request)
     }, { status: 400 })
     
   } catch (error) {
