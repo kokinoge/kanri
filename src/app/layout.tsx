@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { Providers } from '@/components/providers'
 
 export const metadata: Metadata = {
   title: "予算管理システム - Kanri",
@@ -15,9 +14,7 @@ export default function RootLayout({
   return (
     <html lang="ja">
       <body className="antialiased">
-        <Providers>
-          {children}
-        </Providers>
+        {children}
       </body>
     </html>
   );
