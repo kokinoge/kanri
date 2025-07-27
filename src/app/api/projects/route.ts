@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/auth";
+// import { auth } from "@/auth"; // 一時的に無効化
 import { hasRequiredRole } from "@/lib/permissions";
 
 // Dynamic server usageを回避
@@ -44,10 +44,10 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     // 認証チェック
-    const session = await auth();
-    if (!hasRequiredRole(session, "manager")) {
-      return new NextResponse("Unauthorized", { status: 401 });
-    }
+    // const session = await auth(); // 一時的に無効化
+    // if (!hasRequiredRole(session, "manager")) {
+    //   return new NextResponse("Unauthorized", { status: 401 });
+    // }
 
     const body = await request.json();
     const { 

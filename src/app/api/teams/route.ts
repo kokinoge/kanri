@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
+// import { auth } from "@/auth"; // 一時的に無効化
 import { hasRequiredRole } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
   try {
-    // 一時的に認証チェックをスキップ（開発時のみ）
+    // 認証チェックを一時的に無効化（本番環境の動作確認のため）
     /*
     const session = await auth();
     

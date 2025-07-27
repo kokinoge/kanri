@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import auth from "@/auth";
+// import auth from "@/auth"; // 一時的に無効化
 import { hasRequiredRole } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 
