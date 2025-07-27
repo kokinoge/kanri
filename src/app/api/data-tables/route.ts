@@ -10,23 +10,49 @@ export async function GET(request: Request) {
   try {
     console.log('[DATA_TABLES_API] Request received');
     
-    // 一時的に認証チェックをスキップ（開発時のみ）
-    /*
-    const session = await auth();
-    console.log('[DATA_TABLES_API] Session:', {
-      hasSession: !!session,
-      userId: session?.user?.id,
-      userRole: session?.user?.role,
-      userEmail: session?.user?.email,
+    // デバッグ用：リクエストヘッダーの確認
+    console.log('[DATA_TABLES_API] Request headers:', {
+      'user-agent': request.headers.get('user-agent'),
+      'content-type': request.headers.get('content-type'),
+      'origin': request.headers.get('origin'),
     });
 
-    if (!session?.user || !hasRequiredRole(session, "member")) {
-      console.log('[DATA_TABLES_API] Authorization failed');
-      return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
+    // 認証チェック（開発環境でのみコメントアウト）
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    
+    if (!isDevelopment) {
+      const session = await auth();
+      console.log('[DATA_TABLES_API] Session:', {
+        hasSession: !!session,
+        userId: session?.user?.id,
+        userRole: session?.user?.role,
+        userEmail: session?.user?.email,
+      });
+
+      if (!session?.user || !hasRequiredRole(session, "member")) {
+        console.log('[DATA_TABLES_API] Authorization failed');
+        return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
+      }
+    } else {
+      console.log('[DATA_TABLES_API] Development mode: Skipping auth check');
     }
-    */
 
     console.log('[DATA_TABLES_API] Authorization successful');
+
+    // データベース接続確認
+    try {
+      await prisma.$connect();
+      console.log('[DATA_TABLES_API] Database connection successful');
+    } catch (dbError) {
+      console.error('[DATA_TABLES_API] Database connection failed:', dbError);
+      return NextResponse.json(
+        { 
+          error: "データベース接続エラー",
+          details: dbError instanceof Error ? dbError.message : "不明なエラー"
+        }, 
+        { status: 503 }
+      );
+    }
 
     // Dynamic server usageを回避するため、new URLを使用
     const url = new URL(request.url);
@@ -57,50 +83,57 @@ export async function GET(request: Request) {
     // クライアント・部門フィルタ用のプロジェクトIDを取得
     let targetCampaignIds: string[] = [];
     if (clientId || department) {
-      const departmentProjectFilter = department ? {
-        client: { 
-          businessDivision: department // departmentをbusinessDivisionとして扱う
-        }
-      } : {};
+      try {
+        const departmentProjectFilter = department ? {
+          client: { 
+            businessDivision: department // departmentをbusinessDivisionとして扱う
+          }
+        } : {};
 
-      const filteredProjects = await prisma.campaign.findMany({
-        where: {
-          ...(clientId ? { clientId } : {}),
-          ...departmentProjectFilter,
-        },
-        select: {
-          id: true,
-        },
-      });
-      targetCampaignIds = filteredProjects.map(c => c.id);
-      
-      // 対象プロジェクトが存在しない場合は空の結果を返す
-      if (targetCampaignIds.length === 0) {
-        console.log('[DATA_TABLES_API] No matching projects found for filters');
-        return NextResponse.json({
-          budgets: [],
-          results: [],
-          clients: [],
-          campaigns: [],
-          statistics: {
-            totalBudget: 0,
-            totalSpend: 0,
-            totalResults: 0,
-            efficiency: 0,
-            recordCounts: {
-              budgets: 0,
-              results: 0,
-              clients: 0,
-              campaigns: 0,
-            },
+        const filteredProjects = await prisma.campaign.findMany({
+          where: {
+            ...(clientId ? { clientId } : {}),
+            ...departmentProjectFilter,
           },
-          filterOptions: {
-            platforms: [],
-            operationTypes: [],
-            departments: [],
-            clients: [],
+          select: {
+            id: true,
           },
         });
+        targetCampaignIds = filteredProjects.map(c => c.id);
+        
+        console.log('[DATA_TABLES_API] Filtered campaigns:', targetCampaignIds.length);
+        
+        // 対象プロジェクトが存在しない場合は空の結果を返す
+        if (targetCampaignIds.length === 0) {
+          console.log('[DATA_TABLES_API] No matching projects found for filters');
+          return NextResponse.json({
+            budgets: [],
+            results: [],
+            clients: [],
+            campaigns: [],
+            statistics: {
+              totalBudget: 0,
+              totalSpend: 0,
+              totalResults: 0,
+              efficiency: 0,
+              recordCounts: {
+                budgets: 0,
+                results: 0,
+                clients: 0,
+                campaigns: 0,
+              },
+            },
+            filterOptions: {
+              platforms: [],
+              operationTypes: [],
+              departments: [],
+              clients: [],
+            },
+          });
+        }
+      } catch (filterError) {
+        console.error('[DATA_TABLES_API] Error filtering campaigns:', filterError);
+        throw filterError;
       }
     }
 
@@ -109,73 +142,85 @@ export async function GET(request: Request) {
     const operationTypeFilter = operationType ? { operationType } : {};
 
     // 予算データの取得
-    const budgets = await prisma.budget.findMany({
-      where: {
-        ...dateFilter,
-        ...(targetCampaignIds.length > 0 ? { campaignId: { in: targetCampaignIds } } : {}),
-        ...platformFilter,
-        ...operationTypeFilter,
-      },
-      include: {
-        campaign: {
-          include: {
-            client: {
-              include: {
-                manager: {
-                  select: {
-                    id: true,
-                    name: true,
-                    role: true,
+    let budgets = [];
+    try {
+      console.log('[DATA_TABLES_API] Fetching budgets...');
+      budgets = await prisma.budget.findMany({
+        where: {
+          ...dateFilter,
+          ...(targetCampaignIds.length > 0 ? { campaignId: { in: targetCampaignIds } } : {}),
+          ...platformFilter,
+          ...operationTypeFilter,
+        },
+        include: {
+          campaign: {
+            include: {
+              client: {
+                include: {
+                  manager: {
+                    select: {
+                      id: true,
+                      name: true,
+                      role: true,
+                    },
                   },
                 },
               },
             },
           },
+          budgetTeams: true,
         },
-        budgetTeams: true,
-      },
-      orderBy: [
-        { year: "desc" },
-        { month: "desc" },
-        { platform: "asc" },
-      ],
-    });
-
-    console.log('[DATA_TABLES_API] Budgets retrieved:', budgets.length);
+        orderBy: [
+          { year: "desc" },
+          { month: "desc" },
+          { platform: "asc" },
+        ],
+      });
+      console.log('[DATA_TABLES_API] Budgets retrieved:', budgets.length);
+    } catch (budgetError) {
+      console.error('[DATA_TABLES_API] Error fetching budgets:', budgetError);
+      throw new Error(`予算データの取得に失敗しました: ${budgetError instanceof Error ? budgetError.message : '不明なエラー'}`);
+    }
 
     // 実績データの取得
-    const results = await prisma.result.findMany({
-      where: {
-        ...dateFilter,
-        ...(targetCampaignIds.length > 0 ? { campaignId: { in: targetCampaignIds } } : {}),
-        ...platformFilter,
-        ...operationTypeFilter,
-      },
-      include: {
-        campaign: {
-          include: {
-            client: {
-              include: {
-                manager: {
-                  select: {
-                    id: true,
-                    name: true,
-                    role: true,
+    let results = [];
+    try {
+      console.log('[DATA_TABLES_API] Fetching results...');
+      results = await prisma.result.findMany({
+        where: {
+          ...dateFilter,
+          ...(targetCampaignIds.length > 0 ? { campaignId: { in: targetCampaignIds } } : {}),
+          ...platformFilter,
+          ...operationTypeFilter,
+        },
+        include: {
+          campaign: {
+            include: {
+              client: {
+                include: {
+                  manager: {
+                    select: {
+                      id: true,
+                      name: true,
+                      role: true,
+                    },
                   },
                 },
               },
             },
           },
         },
-      },
-      orderBy: [
-        { year: "desc" },
-        { month: "desc" },
-        { platform: "asc" },
-      ],
-    });
-
-    console.log('[DATA_TABLES_API] Results retrieved:', results.length);
+        orderBy: [
+          { year: "desc" },
+          { month: "desc" },
+          { platform: "asc" },
+        ],
+      });
+      console.log('[DATA_TABLES_API] Results retrieved:', results.length);
+    } catch (resultError) {
+      console.error('[DATA_TABLES_API] Error fetching results:', resultError);
+      throw new Error(`実績データの取得に失敗しました: ${resultError instanceof Error ? resultError.message : '不明なエラー'}`);
+    }
 
     // クライアントデータの取得
     const clientsFilter = {
@@ -322,12 +367,35 @@ export async function GET(request: Request) {
 
   } catch (error) {
     console.error('[DATA_TABLES_GET] Error:', error);
-    return NextResponse.json(
+    
+    // エラーの詳細ログ
+    if (error instanceof Error) {
+      console.error('[DATA_TABLES_GET] Error stack:', error.stack);
+    }
+    
+    // エラーレスポンスのヘッダー追加
+    const response = NextResponse.json(
       { 
         error: "データの取得に失敗しました",
-        details: error instanceof Error ? error.message : "不明なエラー"
+        details: error instanceof Error ? error.message : "不明なエラー",
+        timestamp: new Date().toISOString(),
+        endpoint: "data-tables"
       }, 
       { status: 500 }
     );
+    
+    // CORS ヘッダーの追加（フロントエンドからのリクエスト用）
+    response.headers.set('Access-Control-Allow-Origin', '*');
+    response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    
+    return response;
+  } finally {
+    // データベース接続のクリーンアップ
+    try {
+      await prisma.$disconnect();
+    } catch (disconnectError) {
+      console.error('[DATA_TABLES_API] Error disconnecting from database:', disconnectError);
+    }
   }
 } 
