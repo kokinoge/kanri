@@ -5,6 +5,12 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
+    // ビルド時または環境変数不備時には早期リターン（データベース接続を回避）
+    if (!process.env.DATABASE_URL || process.env.DATABASE_URL.includes('placeholder')) {
+      console.log('[INTEGRATED_MANAGEMENT] Database not available - returning empty data');
+      return NextResponse.json([], { status: 200 });
+    }
+
     const searchParams = request.nextUrl.searchParams;
     const year = searchParams.get('year');
     const month = searchParams.get('month');

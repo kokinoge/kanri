@@ -5,6 +5,12 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
   try {
+    // ビルド時または環境変数不備時には早期リターン（データベース接続を回避）
+    if (!process.env.DATABASE_URL || process.env.DATABASE_URL.includes('placeholder')) {
+      console.log('[CLIENTS_API] Database not available - returning empty data');
+      return NextResponse.json([], { status: 200 });
+    }
+
     console.log('[CLIENTS_API] GET リクエスト受信:', {
       pathname: request.nextUrl.pathname,
       searchParams: Object.fromEntries(request.nextUrl.searchParams),

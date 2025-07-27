@@ -3,8 +3,17 @@ import { auth } from "@/auth";
 import { hasRequiredRole } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 
+// Dynamic server usageを回避
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
+    // ビルド時または環境変数不備時には早期リターン（データベース接続を回避）
+    if (!process.env.DATABASE_URL || process.env.DATABASE_URL.includes('placeholder')) {
+      console.log('[CLIENT_ANALYTICS] Database not available - returning empty data');
+      return NextResponse.json([], { status: 200 });
+    }
+
     // 一時的に認証チェックをスキップ（開発時のみ）
     /*
     const session = await auth();
@@ -20,6 +29,8 @@ export async function GET() {
       userEmail: session.user.email,
     });
     */
+
+    console.log('[CLIENT_ANALYTICS] Starting analytics query');
 
     // クライアント別の集計データを取得
     const clientAnalytics = await prisma.$queryRaw`

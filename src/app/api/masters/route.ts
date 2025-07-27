@@ -5,6 +5,12 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
+    // ビルド時または環境変数不備時には早期リターン（データベース接続を回避）
+    if (!process.env.DATABASE_URL || process.env.DATABASE_URL.includes('placeholder')) {
+      console.log('[MASTERS_API] Database not available - returning empty data');
+      return NextResponse.json([], { status: 200 });
+    }
+
     // Next.jsの推奨方法でsearchParamsを取得
     const searchParams = request.nextUrl.searchParams;
     const category = searchParams.get("category");
