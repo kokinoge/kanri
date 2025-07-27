@@ -1,0 +1,32 @@
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
+
+export function middleware(request: NextRequest) {
+  // シンプルな処理のみ - ログとヘッダー設定を最小限に
+  try {
+    // APIルートの場合のみ処理
+    if (request.nextUrl.pathname.startsWith('/api/')) {
+      const response = NextResponse.next()
+      
+      // 最小限のヘッダー設定
+      response.headers.set('X-Middleware-Cache', 'no-cache')
+      
+      return response
+    }
+    
+    // その他のすべてのリクエストはそのまま通す
+    return NextResponse.next()
+    
+  } catch (error) {
+    // エラーが発生した場合は何もせずに通す
+    console.error('Middleware error:', error)
+    return NextResponse.next()
+  }
+}
+
+export const config = {
+  matcher: [
+    // 静的ファイルとNext.js内部ファイルを除外
+    '/((?!_next/static|_next/image|favicon.ico).*)',
+  ]
+} 
