@@ -3,9 +3,12 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { hasRequiredRole } from "@/lib/permissions";
 
+// Dynamic server usageを回避
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: Request) {
   try {
-    const { searchParams } = new URL(request.url);
+    const searchParams = request.nextUrl.searchParams;
     const clientId = searchParams.get("clientId");
 
     const where = clientId ? { clientId } : {};

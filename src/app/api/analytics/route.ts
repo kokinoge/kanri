@@ -163,7 +163,15 @@ async function generateAnalyticsData(period: string) {
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
+    console.log('[ANALYTICS_API] Request received');
+
+    // Next.jsの推奨方法でsearchParamsを取得
+    const searchParams = request.nextUrl.searchParams;
+    const year = searchParams.get("year");
+    const month = searchParams.get("month");
+    const clientId = searchParams.get("clientId");
+    const department = searchParams.get("department");
+
     const period = searchParams.get('period') || '2025';
 
     console.log('[ANALYTICS_API] 分析データ取得:', { period });

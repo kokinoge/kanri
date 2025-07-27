@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/components/providers";
 import { useRouter } from "next/navigation";
 import useSWR from "swr";
 import ProtectedLayout from "@/components/ProtectedLayout";
@@ -70,7 +70,7 @@ interface DepartmentStats {
 }
 
 export default function DepartmentManagementPage() {
-  const { data: session } = useSession();
+  const { user: session } = useAuth();
   const router = useRouter();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);

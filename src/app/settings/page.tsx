@@ -5,11 +5,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Settings, Database, Users, Building2, Building } from "lucide-react";
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/components/providers";
 import { hasRequiredRole } from "@/lib/permissions";
 
 export default function SettingsPage() {
-  const { data: session } = useSession();
+  const { user: session } = useAuth();
 
   return (
     <ProtectedLayout requiredRole="manager">

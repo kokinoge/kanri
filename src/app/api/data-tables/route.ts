@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
+import auth from "@/auth";
 import { hasRequiredRole } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+
+// Dynamic server usageを回避
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
@@ -25,7 +28,9 @@ export async function GET(request: Request) {
 
     console.log('[DATA_TABLES_API] Authorization successful');
 
-    const { searchParams } = new URL(request.url);
+    // Dynamic server usageを回避するため、new URLを使用
+    const url = new URL(request.url);
+    const searchParams = url.searchParams;
     const year = searchParams.get("year");
     const month = searchParams.get("month");
     const clientId = searchParams.get("clientId");

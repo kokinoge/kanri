@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import useSWR from "swr";
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/components/providers";
 import ProtectedLayout from "@/components/ProtectedLayout";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,7 +32,7 @@ const masterCategories = [
 ];
 
 function MasterDataTable({ category }: { category: string }) {
-  const { data: session } = useSession();
+  const { user: session } = useAuth();
   const { data: masters, error, mutate } = useSWR(`/api/masters?category=${category}`, fetcher);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMaster, setEditingMaster] = useState<any>(null);
@@ -133,7 +133,7 @@ function MasterDataTable({ category }: { category: string }) {
 
 
 export default function MastersPage() {
-    const { data: session } = useSession();
+    const { user: session } = useAuth();
 
     if (!hasRequiredRole(session, "manager")) {
         return (

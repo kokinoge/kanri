@@ -203,11 +203,3 @@ model CampaignKpi {
 
   @@map("campaign_kpis")
 }
-
-/// We could not retrieve columns for the underlying table. Either it has none or you are missing rights to see them. Please check your privileges.
-// model business_divisions {
-// }
-
-/// We could not retrieve columns for the underlying table. Either it has none or you are missing rights to see them. Please check your privileges.
-// model sales_departments {
-// }

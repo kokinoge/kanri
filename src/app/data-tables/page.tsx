@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback } from "react";
 import useSWR from "swr";
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/components/providers";
 import { useRouter } from "next/navigation";
 import ProtectedLayout from "@/components/ProtectedLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -167,7 +167,7 @@ const fetcher = async (url: string): Promise<DataTablesResponse> => {
 };
 
 export default function DataTablesPage() {
-  const { data: session, status } = useSession();
+  const { user: session, loading: authLoading } = useAuth();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("results");
   const [viewMode, setViewMode] = useState<'table' | 'card'>('table');
@@ -646,7 +646,7 @@ export default function DataTablesPage() {
   );
 
   // 認証状態チェック
-  if (status === "loading") {
+  if (authLoading) {
     return (
       <ProtectedLayout>
         <div className="flex items-center justify-center h-64">

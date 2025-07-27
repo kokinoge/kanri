@@ -6,9 +6,9 @@ export const dynamic = 'force-dynamic'
 export async function GET(request: NextRequest) {
   try {
     console.log('[CLIENTS_API] GET リクエスト受信:', {
-      url: request.url,
+      pathname: request.nextUrl.pathname,
+      searchParams: Object.fromEntries(request.nextUrl.searchParams),
       method: request.method,
-      headers: Object.fromEntries(request.headers.entries()),
       timestamp: new Date().toISOString(),
       env: process.env.NODE_ENV
     });
@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     console.log('[CLIENTS_API] POST リクエスト受信:', {
-      url: request.url,
+      pathname: request.nextUrl.pathname,
       method: request.method,
       timestamp: new Date().toISOString()
     });

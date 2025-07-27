@@ -1,13 +1,13 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/components/providers";
 import Link from "next/link";
 import { Shield, ArrowLeft, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function UnauthorizedPage() {
-  const { data: session } = useSession();
+  const { user: session } = useAuth();
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">

@@ -29,13 +29,25 @@ function resolveBaseUrl(request: NextRequest): string {
 
 // 詳細ログ関数
 function logRequest(req: NextRequest, context: string) {
-  const url = new URL(req.url)
   const baseUrl = resolveBaseUrl(req)
+  
+  // URL解析をtry-catchで安全に処理
+  let pathname = '/'
+  let searchParams = {}
+  
+  try {
+    const url = new URL(req.url, baseUrl)
+    pathname = url.pathname
+    searchParams = Object.fromEntries(url.searchParams)
+  } catch (error) {
+    console.warn(`[AUTH_${context}] URL parsing failed:`, error.message)
+    pathname = req.nextUrl?.pathname || '/'
+  }
   
   console.log(`[AUTH_${context}]`, {
     method: req.method,
-    pathname: url.pathname,
-    searchParams: Object.fromEntries(url.searchParams),
+    pathname,
+    searchParams,
     userAgent: req.headers.get('user-agent'),
     baseUrl,
     env: process.env.NODE_ENV,

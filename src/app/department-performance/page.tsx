@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import useSWR from "swr";
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/components/providers";
 import ProtectedLayout from "@/components/ProtectedLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -162,7 +162,7 @@ interface DepartmentAnalytics {
 }
 
 export default function DepartmentPerformancePage() {
-  const { data: session } = useSession();
+  const { user: session } = useAuth();
   const [selectedDepartment, setSelectedDepartment] = useState<string>("all");
   const [selectedTimeRange, setSelectedTimeRange] = useState<string>("12");
   const [showDetails, setShowDetails] = useState<boolean>(false);

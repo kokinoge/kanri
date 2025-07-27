@@ -74,9 +74,9 @@ const authOptions = {
 }
 
 // NextAuth handlerを作成
-const handler = NextAuth(authOptions)
+const { handlers, auth } = NextAuth(authOptions)
 
 // App Router用のエクスポート
-export { handler as GET, handler as POST }
-export { authOptions }
-export default handler 
+export { handlers as GET, handlers as POST }
+export { authOptions, auth }
+export default auth 

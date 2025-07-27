@@ -1,20 +1,27 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
+import auth from "@/auth";
 import { hasRequiredRole } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 
+// Dynamic server usageを回避
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: Request) {
   try {
+    console.log('[MONTHLY_OVERVIEW_API] Request received');
+    
     // 一時的に認証チェックをスキップ（開発時のみ）
     /*
     const session = await auth();
-    
+    console.log('[MONTHLY_OVERVIEW_API] Session:', session);
+
     if (!session?.user || !hasRequiredRole(session, "member")) {
       return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
     }
     */
 
-    const { searchParams } = new URL(request.url);
+    // Next.jsの推奨方法でsearchParamsを取得
+    const searchParams = request.nextUrl.searchParams;
     const monthParam = searchParams.get("month");
     
     // デフォルトは現在月

@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Plus, Edit, Trash2, Building2, Users } from "lucide-react";
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/components/providers";
 import { hasRequiredRole } from "@/lib/permissions";
 import { toast } from "sonner";
 import { NumberInput } from "@/components/ui/number-input";
@@ -39,7 +39,7 @@ const clientSchema = z.object({
 type ClientFormValues = z.infer<typeof clientSchema>;
 
 export default function SettingsClientsPage() {
-  const { data: session } = useSession();
+  const { user: session } = useAuth();
   const { data: clients, error, mutate } = useSWR("/api/clients", fetcher);
   const { data: assignableUsers } = useSWR("/api/users/assignable", fetcher);
   const { data: departments } = useSWR("/api/masters?category=department", fetcher);

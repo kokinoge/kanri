@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/components/providers";
 import MobileHeader from "./MobileHeader";
 import MobileNavigation from "./MobileNavigation";
 
@@ -11,7 +11,7 @@ interface MobileLayoutProps {
 
 export default function MobileLayout({ children }: MobileLayoutProps) {
   const [isNavOpen, setIsNavOpen] = useState(false);
-  const { data: session } = useSession();
+  const { user: session } = useAuth();
 
   const toggleNav = () => {
     setIsNavOpen(!isNavOpen);

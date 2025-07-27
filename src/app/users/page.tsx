@@ -1,7 +1,7 @@
 "use client";
 
 import useSWR from "swr";
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/components/providers";
 import ProtectedLayout from "@/components/ProtectedLayout";
 import { useState, useMemo, useEffect } from "react";
 import { canManageUser, hasRequiredRole, Role } from "@/lib/permissions";
@@ -9,7 +9,7 @@ import { canManageUser, hasRequiredRole, Role } from "@/lib/permissions";
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export default function UsersPage() {
-  const { data: session, status } = useSession();
+  const { user: session, loading: authLoading } = useAuth();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
@@ -20,19 +20,19 @@ export default function UsersPage() {
 
   // 開発環境でのセッション状態確認
   useEffect(() => {
-    console.log('[USERS_PAGE] Session status:', status);
+    console.log('[USERS_PAGE] Session status:', authLoading ? 'loading' : (session ? 'authenticated' : 'unauthenticated'));
     console.log('[USERS_PAGE] Session data:', session);
     
-    if (status === 'loading') {
+    if (authLoading) {
       setIsLoading(true);
-    } else if (status === 'unauthenticated') {
+          } else if (!session && !authLoading) {
       console.log('[USERS_PAGE] User not authenticated, redirecting...');
       setIsLoading(false);
-    } else if (status === 'authenticated') {
+          } else if (session && !authLoading) {
       console.log('[USERS_PAGE] User authenticated:', session?.user);
       setIsLoading(false);
     }
-  }, [session, status]);
+  }, [session, authLoading]);
 
   // APIクエリパラメータを構築
   const queryParams = useMemo(() => {
@@ -141,7 +141,7 @@ export default function UsersPage() {
   };
 
   // ローディング状態の管理
-  const showLoading = isLoading || swrLoading || status === 'loading';
+  const showLoading = isLoading || swrLoading || authLoading;
   const showError = error || swrError;
 
   // エラー表示
@@ -176,7 +176,7 @@ export default function UsersPage() {
             ユーザーデータを読み込み中...
           </div>
           <div className="text-sm text-gray-500 mt-2">
-            セッション状態: {status}
+            セッション状態: {authLoading ? 'loading' : (session ? 'authenticated' : 'unauthenticated')}
           </div>
         </div>
       </ProtectedLayout>
