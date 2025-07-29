@@ -10,12 +10,17 @@ const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        if (credentials?.email === "admin@example.com" && 
-           (credentials?.password === "admin" || credentials?.password === "admin123")) {
+        // 本番環境では環境変数から認証情報を取得
+        const isProduction = process.env.NODE_ENV === 'production'
+        const validEmail = process.env.ADMIN_EMAIL || "admin@example.com"
+        const validPassword = process.env.ADMIN_PASSWORD || "admin"
+
+        if (credentials?.email === validEmail && credentials?.password === validPassword) {
           return {
             id: "1",
             name: "管理者ユーザー",
-            email: "admin@example.com"
+            email: validEmail,
+            role: "admin"
           }
         }
         return null

@@ -32,8 +32,8 @@ export default function LoginPage() {
         // ログイン成功
         router.push('/')
       } else {
-        const error = await response.json()
-        setError(error.message || 'ログインに失敗しました')
+        const errorData = await response.json()
+        setError(errorData.error || errorData.message || 'ログインに失敗しました')
       }
     } catch (err) {
       setError('ネットワークエラーが発生しました')

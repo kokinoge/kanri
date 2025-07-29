@@ -55,3 +55,4 @@ build/
 .DS_Store
 *.tsbuildinfo
 security-test-report.json
+.env*.local
