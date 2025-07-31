@@ -1,7 +1,14 @@
-import { google } from 'googleapis';
+// Googleapisの動的インポートを使用してバンドルサイズを最適化
+let google: any;
 
 // Google Sheets APIクライアントの初期化
-export function getGoogleSheetsClient() {
+export async function getGoogleSheetsClient() {
+  // Googleapisを動的にインポート
+  if (!google) {
+    const googleapis = await import('googleapis');
+    google = googleapis.google;
+  }
+
   const auth = new google.auth.JWT({
     email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
     key: process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY?.replace(/\\n/g, '\n'),
@@ -13,7 +20,7 @@ export function getGoogleSheetsClient() {
 
 // スプレッドシートのフォーマット設定
 export async function setupSpreadsheetFormat(spreadsheetId: string) {
-  const sheets = getGoogleSheetsClient();
+  const sheets = await getGoogleSheetsClient();
 
   try {
     console.log('[SHEETS_SETUP] Setting up format for spreadsheet:', spreadsheetId);
@@ -118,7 +125,7 @@ export async function setupSpreadsheetFormat(spreadsheetId: string) {
 
 // ヘッダー設定
 async function setupHeaders(spreadsheetId: string) {
-  const sheets = getGoogleSheetsClient();
+  const sheets = await getGoogleSheetsClient();
 
   const updates = [
     // Clientsシートのヘッダー
@@ -172,7 +179,7 @@ export async function syncDataToSheets(
   data: any[],
   syncMode: 'append' | 'replace' | 'update' = 'replace'
 ) {
-  const sheets = getGoogleSheetsClient();
+  const sheets = await getGoogleSheetsClient();
 
   try {
     console.log(`[SHEETS_SYNC] Syncing ${data.length} ${entityType} records to spreadsheet`);
