@@ -10,7 +10,7 @@ const nextConfig = {
     appDir: true,
   },
   trailingSlash: false,
-  output: 'standalone',
+  // output: 'standalone', // Vercel用に無効化
   poweredByHeader: false,
   compress: true,
   // Vercel deployment optimization
