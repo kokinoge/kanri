@@ -68,6 +68,18 @@ export async function setupSpreadsheetFormat(spreadsheetId: string) {
           },
         },
       },
+      // Mediaシート作成
+      {
+        addSheet: {
+          properties: {
+            title: 'Media',
+            gridProperties: {
+              rowCount: 1000,
+              columnCount: 14,
+            },
+          },
+        },
+      },
       // Summaryシート作成
       {
         addSheet: {
@@ -129,6 +141,11 @@ async function setupHeaders(spreadsheetId: string) {
       range: 'Results!A1:O1',
       values: [['ID', 'キャンペーンID', 'キャンペーン名', '日付', 'インプレッション', 'クリック数', 'CTR', 'CPC', '費用', 'コンバージョン', 'CVR', 'CPA', 'ROAS', '登録日', '更新日']],
     },
+    // Mediaシートのヘッダー
+    {
+      range: 'Media!A1:N1',
+      values: [['ID', '媒体名', 'プラットフォーム', 'インプレッション', 'クリック数', 'CTR', '費用', 'コンバージョン', 'CPA', 'ROAS', 'ステータス', '登録日', '更新日', '備考']],
+    },
     // Summaryシートのヘッダー
     {
       range: 'Summary!A1:J1',
@@ -151,7 +168,7 @@ async function setupHeaders(spreadsheetId: string) {
 // データ同期（既存データをスプレッドシートに書き込み）
 export async function syncDataToSheets(
   spreadsheetId: string,
-  entityType: 'clients' | 'campaigns' | 'budgets' | 'results',
+  entityType: 'clients' | 'campaigns' | 'budgets' | 'results' | 'media',
   data: any[],
   syncMode: 'append' | 'replace' | 'update' = 'replace'
 ) {
@@ -206,6 +223,7 @@ function getSheetName(entityType: string): string {
     campaigns: 'Campaigns',
     budgets: 'Budgets',
     results: 'Results',
+    media: 'Media',
   };
   return sheetNames[entityType as keyof typeof sheetNames] || 'Data';
 }
@@ -276,6 +294,23 @@ function convertToSheetRow(item: any, entityType: string): string[] {
         item.roas || '',
         item.createdAt ? new Date(item.createdAt).toLocaleDateString('ja-JP') : '',
         item.updatedAt ? new Date(item.updatedAt).toLocaleDateString('ja-JP') : '',
+      ];
+    case 'media':
+      return [
+        item.id || '',
+        item.name || '',
+        item.platform || '',
+        item.impressions || '',
+        item.clicks || '',
+        item.ctr || '',
+        item.cost || '',
+        item.conversions || '',
+        item.cpa || '',
+        item.roas || '',
+        item.status || '',
+        item.createdAt ? new Date(item.createdAt).toLocaleDateString('ja-JP') : '',
+        item.updatedAt ? new Date(item.updatedAt).toLocaleDateString('ja-JP') : '',
+        item.notes || '',
       ];
     default:
       return Object.values(item).map(val => String(val || ''));
