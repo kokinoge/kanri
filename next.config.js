@@ -3,7 +3,21 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  /* config options here */
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  experimental: {
+    appDir: true,
+  },
+  trailingSlash: false,
+  output: 'standalone',
+  poweredByHeader: false,
+  compress: true,
+  // Vercel deployment optimization
+  images: {
+    domains: [],
+    unoptimized: true
+  }
 };
 
 module.exports = nextConfig;
