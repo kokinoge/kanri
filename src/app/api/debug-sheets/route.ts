@@ -9,7 +9,8 @@ export async function GET() {
       nodeEnv: process.env.NODE_ENV,
       hasGoogleEmail: !!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
       hasGoogleKey: !!process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY,
-      emailValue: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL ? 'SET' : 'NOT_SET'
+      emailValue: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL ? 'SET' : 'NOT_SET',
+      keyLength: process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY?.length || 0
     }
   });
 }

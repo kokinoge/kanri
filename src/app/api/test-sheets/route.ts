@@ -11,7 +11,7 @@ export async function GET() {
     
     console.log('[TEST_SHEETS] Environment check:', {
       hasEmail,
-      hasKey: hasKey && process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY?.length > 100,
+      hasKey: hasKey && (process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY?.length || 0) > 100,
       hasProjectId
     });
     
@@ -37,7 +37,7 @@ export async function GET() {
       success: true,
       environment: {
         hasEmail,
-        hasKey: hasKey && process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY?.length > 100,
+        hasKey: hasKey && (process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY?.length || 0) > 100,
         hasProjectId,
         googleApiTest
       },
