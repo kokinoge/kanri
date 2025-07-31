@@ -1,0 +1,303 @@
+"use client";
+
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Building2, Table, CheckCircle, AlertCircle } from "lucide-react";
+import { toast } from "sonner";
+
+export default function TestSheetsPage() {
+  const [isLoading, setIsLoading] = useState(false);
+  const [lastResult, setLastResult] = useState<any>(null);
+
+  // スプレッドシートのフォーマット設定
+  const handleFormatSetup = async () => {
+    const spreadsheetId = prompt('Google スプレッドシートのIDまたはURLを入力してください:\n\n例: https://docs.google.com/spreadsheets/d/1ABC...XYZ/edit\nまたは: 1ABC...XYZ');
+    
+    if (!spreadsheetId) {
+      return;
+    }
+
+    // URLからIDを抽出
+    let sheetId = spreadsheetId;
+    if (spreadsheetId.includes('spreadsheets/d/')) {
+      const match = spreadsheetId.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+      if (match) {
+        sheetId = match[1];
+      }
+    }
+
+    setIsLoading(true);
+    setLastResult(null);
+    
+    try {
+      toast.loading('スプレッドシートフォーマットを設定中...', { id: 'sheets-setup' });
+      
+      const response = await fetch('/api/sheets/setup-format', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          spreadsheetId: sheetId
+        })
+      });
+
+      const result = await response.json();
+      setLastResult({ type: 'format', success: response.ok && result.success, result, response: { status: response.status, ok: response.ok } });
+
+      if (response.ok && result.success) {
+        toast.success(`✅ スプレッドシートのフォーマット設定完了！\n各シートが作成されました`, { 
+          id: 'sheets-setup',
+          duration: 6000 
+        });
+        console.log('Sheets setup result:', result);
+        
+        // フォーマット完了後、データ同期を提案
+        setTimeout(() => {
+          if (confirm('フォーマット設定が完了しました。\nクライアントデータを同期しますか？')) {
+            handleDataSync(sheetId);
+          }
+        }, 2000);
+      } else {
+        throw new Error(result.message || 'スプレッドシートのフォーマット設定に失敗しました');
+      }
+    } catch (error) {
+      console.error('Sheets setup error:', error);
+      setLastResult({ type: 'format', success: false, error: error.message });
+      toast.error(`❌ 設定エラー: ${error instanceof Error ? error.message : '不明なエラー'}`, { 
+        id: 'sheets-setup',
+        duration: 5000 
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // クライアントデータ同期
+  const handleDataSync = async (providedSheetId?: string) => {
+    let sheetId = providedSheetId;
+    
+    if (!sheetId) {
+      const spreadsheetId = prompt('Google スプレッドシートのIDまたはURLを入力してください:');
+      
+      if (!spreadsheetId) {
+        return;
+      }
+
+      // URLからIDを抽出
+      sheetId = spreadsheetId;
+      if (spreadsheetId.includes('spreadsheets/d/')) {
+        const match = spreadsheetId.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+        if (match) {
+          sheetId = match[1];
+        }
+      }
+    }
+
+    setIsLoading(true);
+    setLastResult(null);
+    
+    try {
+      toast.loading('Google Sheetsにクライアントデータを同期中...', { id: 'sheets-sync' });
+      
+      const response = await fetch('/api/sheets/clients/sync', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          spreadsheetId: sheetId,
+          syncMode: 'replace' // データを置換
+        })
+      });
+
+      const result = await response.json();
+      setLastResult({ type: 'sync', success: response.ok && result.success, result, response: { status: response.status, ok: response.ok } });
+
+      if (response.ok && result.success) {
+        toast.success(`✅ Google Sheetsに同期完了！\n${result.message}`, { 
+          id: 'sheets-sync',
+          duration: 5000 
+        });
+        console.log('Sheets sync result:', result);
+      } else {
+        throw new Error(result.message || 'Google Sheets同期に失敗しました');
+      }
+    } catch (error) {
+      console.error('Google Sheets sync error:', error);
+      setLastResult({ type: 'sync', success: false, error: error.message });
+      toast.error(`❌ 同期エラー: ${error instanceof Error ? error.message : '不明なエラー'}`, { 
+        id: 'sheets-sync',
+        duration: 5000 
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* ヘッダー */}
+        <div className="mb-8">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold flex items-center text-gray-900">
+                <Building2 className="mr-3" />
+                Google Sheets連携テスト
+              </h1>
+              <p className="text-gray-600 mt-1">
+                スプレッドシート連携機能のテストページ
+              </p>
+            </div>
+            <div className="flex space-x-3">
+              {/* Google Sheets フォーマット設定ボタン */}
+              <Button 
+                variant="secondary" 
+                className="flex items-center"
+                onClick={handleFormatSetup}
+                disabled={isLoading}
+              >
+                <Table className="w-4 h-4 mr-2" />
+                フォーマット設定
+              </Button>
+              
+              {/* Google Sheets データ同期ボタン */}
+              <Button 
+                variant="outline" 
+                className="flex items-center"
+                onClick={() => handleDataSync()}
+                disabled={isLoading}
+              >
+                <Table className="w-4 h-4 mr-2" />
+                データ同期
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* 最後の実行結果 */}
+        {lastResult && (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                {lastResult.success ? (
+                  <CheckCircle className="mr-2 h-5 w-5 text-green-500" />
+                ) : (
+                  <AlertCircle className="mr-2 h-5 w-5 text-red-500" />
+                )}
+                最後の実行結果 ({lastResult.type === 'format' ? 'フォーマット設定' : 'データ同期'})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="font-medium">ステータス:</span>
+                  <span className={lastResult.success ? 'text-green-600' : 'text-red-600'}>
+                    {lastResult.success ? '成功' : '失敗'}
+                  </span>
+                </div>
+                {lastResult.response && (
+                  <div className="flex justify-between">
+                    <span className="font-medium">HTTPレスポンス:</span>
+                    <span>{lastResult.response.status} ({lastResult.response.ok ? 'OK' : 'Error'})</span>
+                  </div>
+                )}
+                {lastResult.result && (
+                  <div>
+                    <span className="font-medium">メッセージ:</span>
+                    <p className="mt-1 text-sm bg-gray-100 p-2 rounded">
+                      {lastResult.result.message || 'メッセージなし'}
+                    </p>
+                  </div>
+                )}
+                {lastResult.error && (
+                  <div>
+                    <span className="font-medium text-red-600">エラー:</span>
+                    <p className="mt-1 text-sm bg-red-50 p-2 rounded text-red-700">
+                      {lastResult.error}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* 使い方ガイド */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>Google Sheets連携 使い方ガイド</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h3 className="font-medium text-blue-900 mb-2">📋 ステップ1: スプレッドシート準備</h3>
+              <ol className="text-sm text-blue-800 space-y-1 ml-4 list-decimal">
+                <li>Google Spreadsheetsで新しいスプレッドシートを作成</li>
+                <li>スプレッドシートのURLをコピー（例: https://docs.google.com/spreadsheets/d/1ABC...XYZ/edit）</li>
+                <li>サービスアカウント（kanri-sheets-service@sys-96273841197210080039237596.iam.gserviceaccount.com）に編集権限を共有</li>
+              </ol>
+            </div>
+            
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <h3 className="font-medium text-green-900 mb-2">⚙️ ステップ2: フォーマット設定</h3>
+              <p className="text-sm text-green-800">
+                「フォーマット設定」ボタンを押して、スプレッドシートに必要なシート（Clients、Campaigns、Budgets、Results、Summary）とヘッダーを自動作成
+              </p>
+            </div>
+            
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+              <h3 className="font-medium text-purple-900 mb-2">📊 ステップ3: データ同期</h3>
+              <p className="text-sm text-purple-800">
+                「データ同期」ボタンを押して、システムのクライアントデータをスプレッドシートに同期
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* テスト用スプレッドシートリンク */}
+        <Card>
+          <CardHeader>
+            <CardTitle>テスト用スプレッドシート</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <h3 className="font-medium text-yellow-900 mb-2">🔗 テスト用スプレッドシートID</h3>
+                <p className="text-sm text-yellow-800 font-mono bg-white p-2 rounded border">
+                  1HxQ0busrn-fSiiGwNd5gXXjj7Td53AAdVzM3moVYvLc
+                </p>
+                <a 
+                  href="https://docs.google.com/spreadsheets/d/1HxQ0busrn-fSiiGwNd5gXXjj7Td53AAdVzM3moVYvLc/edit"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline text-sm"
+                >
+                  → Google Spreadsheetsで開く
+                </a>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-gray-50 p-3 rounded">
+                  <h4 className="font-medium">サービスアカウントEmail</h4>
+                  <p className="text-xs text-gray-600 mt-1 break-all">
+                    kanri-sheets-service@sys-96273841197210080039237596.iam.gserviceaccount.com
+                  </p>
+                </div>
+                <div className="bg-gray-50 p-3 rounded">
+                  <h4 className="font-medium">プロジェクトID</h4>
+                  <p className="text-xs text-gray-600 mt-1">
+                    sys-96273841197210080039237596
+                  </p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
