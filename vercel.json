@@ -1,12 +1,11 @@
 {
-  "buildCommand": "npm run build",
-  "outputDirectory": ".next",
   "framework": "nextjs",
+  "buildCommand": "npm run build",
   "installCommand": "npm install",
   "devCommand": "npm run dev",
   "functions": {
-    "src/app/api/**/*.ts": {
-      "runtime": "nodejs18.x"
+    "src/app/api/**/route.ts": {
+      "runtime": "nodejs20.x"
     }
   },
   "rewrites": [
@@ -20,8 +19,16 @@
       "source": "/(.*)",
       "headers": [
         {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
           "key": "X-Frame-Options",
           "value": "DENY"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "1; mode=block"
         }
       ]
     }
