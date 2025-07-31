@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Building2, Table, CheckCircle, AlertCircle, BarChart3, TrendingUp } from "lucide-react";
@@ -9,6 +9,28 @@ import { toast } from "sonner";
 export default function MediaAnalysisPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [lastResult, setLastResult] = useState<any>(null);
+  const [apiStatus, setApiStatus] = useState<'checking' | 'available' | 'unavailable'>('checking');
+
+  // API状態チェック
+  useEffect(() => {
+    const checkApiStatus = async () => {
+      try {
+        const response = await fetch('/api/sheets/setup-format');
+        if (response.ok) {
+          setApiStatus('available');
+          console.log('API available');
+        } else {
+          setApiStatus('unavailable');
+          console.error('API unavailable:', response.status);
+        }
+      } catch (error) {
+        setApiStatus('unavailable');
+        console.error('API check failed:', error);
+      }
+    };
+
+    checkApiStatus();
+  }, []);
 
   // Google Sheets フォーマット設定
   const handleFormatSetup = async () => {
@@ -220,27 +242,46 @@ export default function MediaAnalysisPage() {
               </p>
             </div>
             <div className="flex flex-wrap gap-3 items-center">
-              {/* Google Sheets フォーマット設定ボタン */}
-              <Button 
-                variant="secondary" 
-                className="flex items-center"
-                onClick={handleFormatSetup}
-                disabled={isLoading}
-              >
-                <Table className="w-4 h-4 mr-2" />
-                フォーマット設定
-              </Button>
+              {/* API状態表示 */}
+              {apiStatus === 'checking' && (
+                <div className="flex items-center text-gray-500">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400 mr-2"></div>
+                  API状態確認中...
+                </div>
+              )}
               
-              {/* Google Sheets データ同期ボタン */}
-              <Button 
-                variant="outline" 
-                className="flex items-center"
-                onClick={() => handleDataSync()}
-                disabled={isLoading}
-              >
-                <Table className="w-4 h-4 mr-2" />
-                データ同期
-              </Button>
+              {apiStatus === 'unavailable' && (
+                <div className="flex items-center text-red-600 bg-red-50 px-3 py-2 rounded border">
+                  <AlertCircle className="w-4 h-4 mr-2" />
+                  API利用不可（デプロイ中の可能性があります）
+                </div>
+              )}
+
+              {apiStatus === 'available' && (
+                <>
+                  {/* Google Sheets フォーマット設定ボタン */}
+                  <Button 
+                    variant="secondary" 
+                    className="flex items-center"
+                    onClick={handleFormatSetup}
+                    disabled={isLoading}
+                  >
+                    <Table className="w-4 h-4 mr-2" />
+                    フォーマット設定
+                  </Button>
+                  
+                  {/* Google Sheets データ同期ボタン */}
+                  <Button 
+                    variant="outline" 
+                    className="flex items-center"
+                    onClick={() => handleDataSync()}
+                    disabled={isLoading}
+                  >
+                    <Table className="w-4 h-4 mr-2" />
+                    データ同期
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </div>

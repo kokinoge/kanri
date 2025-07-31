@@ -213,6 +213,10 @@ export async function syncDataToSheets(
     return {
       success: true,
       message: `${data.length}件のデータを${sheetName}シートに同期しました`,
+      recordCount: data.length,
+      sheetName,
+      syncMode,
+      spreadsheetUrl: `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`
     };
   } catch (error) {
     console.error('[SHEETS_SYNC] Error:', error);
