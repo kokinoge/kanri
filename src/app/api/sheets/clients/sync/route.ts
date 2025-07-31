@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { syncDataToSheets } from '@/lib/google-sheets';
-import { prisma } from '@/lib/prisma';
 
 export async function POST(request: NextRequest) {
   try {
@@ -43,70 +42,70 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// クライアントデータを取得
+// クライアントデータを取得（モックデータのみ）
 async function fetchClientsData(): Promise<any[]> {
-  try {
-    console.log('[SHEETS_SYNC_API] Fetching clients data from database...');
-    
-    const clients = await prisma.client.findMany({
-      orderBy: { createdAt: 'desc' },
-    });
-    
-    console.log(`[SHEETS_SYNC_API] Found ${clients.length} clients in database`);
-    
-    return clients.map(client => ({
-      id: client.id,
-      name: client.name,
-      email: client.email || '',
-      phone: client.phone || '',
-      contactPerson: client.contactPerson || '',
-      department: client.department || '',
-      status: client.isActive ? 'アクティブ' : '非アクティブ',
-      createdAt: client.createdAt,
-      updatedAt: client.updatedAt,
-      notes: client.notes || '',
-    }));
-  } catch (dbError) {
-    console.error('[SHEETS_SYNC_API] Database error for clients:', dbError);
-    // フォールバック: モックデータ
-    console.log('[SHEETS_SYNC_API] Using mock data as fallback');
-    return [
-      {
-        id: 'client-1',
-        name: 'サンプルクライアント1',
-        email: 'client1@example.com',
-        phone: '03-1234-5678',
-        contactPerson: '田中太郎',
-        department: 'マーケティング部',
-        status: 'アクティブ',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        notes: 'サンプルデータ',
-      },
-      {
-        id: 'client-2',
-        name: 'サンプルクライアント2',
-        email: 'client2@example.com',
-        phone: '03-9876-5432',
-        contactPerson: '佐藤花子',
-        department: 'セールス部',
-        status: 'アクティブ',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        notes: 'サンプルデータ',
-      },
-      {
-        id: 'client-3',
-        name: 'テストクライアント3',
-        email: 'client3@example.com',
-        phone: '03-5555-5555',
-        contactPerson: '山田次郎',
-        department: 'プロダクト部',
-        status: 'アクティブ',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        notes: 'サンプルデータ',
-      },
-    ];
-  }
+  console.log('[SHEETS_SYNC_API] Using mock client data');
+  
+  return [
+    {
+      id: 'client-1',
+      name: 'サンプルクライアント1',
+      email: 'client1@example.com',
+      phone: '03-1234-5678',
+      contactPerson: '田中太郎',
+      department: 'マーケティング部',
+      status: 'アクティブ',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      notes: 'サンプルデータ',
+    },
+    {
+      id: 'client-2',
+      name: 'サンプルクライアント2',
+      email: 'client2@example.com',
+      phone: '03-9876-5432',
+      contactPerson: '佐藤花子',
+      department: 'セールス部',
+      status: 'アクティブ',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      notes: 'サンプルデータ',
+    },
+    {
+      id: 'client-3',
+      name: 'テストクライアント3',
+      email: 'client3@example.com',
+      phone: '03-5555-5555',
+      contactPerson: '山田次郎',
+      department: 'プロダクト部',
+      status: 'アクティブ',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      notes: 'サンプルデータ',
+    },
+    {
+      id: 'client-4',
+      name: '株式会社テックソリューション',
+      email: 'contact@techsolution.co.jp',
+      phone: '03-6789-0123',
+      contactPerson: '鈴木一郎',
+      department: 'IT部',
+      status: 'アクティブ',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      notes: 'システム開発案件担当',
+    },
+    {
+      id: 'client-5',
+      name: 'グローバル商事株式会社',
+      email: 'info@global-trade.com',
+      phone: '03-4567-8901',
+      contactPerson: '高橋美穂',
+      department: '企画部',
+      status: 'アクティブ',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      notes: 'マーケティング支援案件',
+    },
+  ];
 }

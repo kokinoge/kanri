@@ -65,8 +65,9 @@ export default function TestSheetsPage() {
       }
     } catch (error) {
       console.error('Sheets setup error:', error);
-      setLastResult({ type: 'format', success: false, error: error.message });
-      toast.error(`❌ 設定エラー: ${error instanceof Error ? error.message : '不明なエラー'}`, { 
+      const errorMessage = error instanceof Error ? error.message : '不明なエラー';
+      setLastResult({ type: 'format', success: false, error: errorMessage });
+      toast.error(`❌ 設定エラー: ${errorMessage}`, { 
         id: 'sheets-setup',
         duration: 5000 
       });
@@ -128,8 +129,9 @@ export default function TestSheetsPage() {
       }
     } catch (error) {
       console.error('Google Sheets sync error:', error);
-      setLastResult({ type: 'sync', success: false, error: error.message });
-      toast.error(`❌ 同期エラー: ${error instanceof Error ? error.message : '不明なエラー'}`, { 
+      const errorMessage = error instanceof Error ? error.message : '不明なエラー';
+      setLastResult({ type: 'sync', success: false, error: errorMessage });
+      toast.error(`❌ 同期エラー: ${errorMessage}`, { 
         id: 'sheets-sync',
         duration: 5000 
       });

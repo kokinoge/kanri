@@ -181,7 +181,7 @@ export default function ClientsPage() {
               <ol className="text-sm text-blue-800 space-y-1 ml-4 list-decimal">
                 <li>Google Spreadsheetsで新しいスプレッドシートを作成</li>
                 <li>スプレッドシートのURLをコピー（例: https://docs.google.com/spreadsheets/d/1ABC...XYZ/edit）</li>
-                <li>サービスアカウント（{process.env.NEXT_PUBLIC_GOOGLE_SERVICE_ACCOUNT_EMAIL || 'kanri-sheets-service@...'}}）に編集権限を共有</li>
+                <li>サービスアカウント（kanri-sheets-service@sys-96273841197210080039237596.iam.gserviceaccount.com）に編集権限を共有</li>
               </ol>
             </div>
             
@@ -201,29 +201,23 @@ export default function ClientsPage() {
           </CardContent>
         </Card>
 
-        {/* 環境変数確認 */}
+        {/* サービス情報 */}
         <Card>
           <CardHeader>
-            <CardTitle>システム状態</CardTitle>
+            <CardTitle>Google Cloud設定情報</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="bg-gray-50 p-3 rounded">
-                <h4 className="font-medium">Google Service Account Email</h4>
-                <p className="text-sm text-gray-600 mt-1">
-                  {process.env.NEXT_PUBLIC_GOOGLE_SERVICE_ACCOUNT_EMAIL ? '✅ 設定済み' : '❌ 未設定'}
+                <h4 className="font-medium">サービスアカウントEmail</h4>
+                <p className="text-xs text-gray-600 mt-1 break-all">
+                  kanri-sheets-service@sys-96273841197210080039237596.iam.gserviceaccount.com
                 </p>
               </div>
               <div className="bg-gray-50 p-3 rounded">
-                <h4 className="font-medium">Google Private Key</h4>
-                <p className="text-sm text-gray-600 mt-1">
-                  {process.env.NEXT_PUBLIC_GOOGLE_PRIVATE_KEY ? '✅ 設定済み' : '❌ 未設定'}
-                </p>
-              </div>
-              <div className="bg-gray-50 p-3 rounded">
-                <h4 className="font-medium">Google Project ID</h4>
-                <p className="text-sm text-gray-600 mt-1">
-                  {process.env.NEXT_PUBLIC_GOOGLE_PROJECT_ID ? '✅ 設定済み' : '❌ 未設定'}
+                <h4 className="font-medium">プロジェクトID</h4>
+                <p className="text-xs text-gray-600 mt-1">
+                  sys-96273841197210080039237596
                 </p>
               </div>
             </div>
