@@ -1,0 +1,64 @@
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { getToken } from 'next-auth/jwt';
+
+export async function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+  
+  console.log(`[Middleware] Checking path: ${pathname}`);
+
+  // 静的ファイル、API、公開パスは認証不要
+  const isPublicPath = 
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/api/auth') ||
+    pathname.startsWith('/api/public') ||
+    pathname.startsWith('/api/test') ||
+    pathname.startsWith('/api/db-test') ||
+    pathname.startsWith('/api/check') ||
+    pathname === '/auth/signin' ||
+    pathname.startsWith('/public-debug') ||
+    pathname.startsWith('/debug') ||
+    pathname === '/test' ||
+    pathname === '/env-test' ||
+    pathname.endsWith('.json') ||
+    pathname.endsWith('.js') ||
+    pathname.endsWith('.css') ||
+    pathname.endsWith('.ico');
+
+  if (isPublicPath) {
+    console.log(`[Middleware] Public path, allowing access: ${pathname}`);
+    return NextResponse.next();
+  }
+
+  // トークンを確認
+  const token = await getToken({
+    req: request,
+    secret: process.env.NEXTAUTH_SECRET,
+  });
+
+  console.log(`[Middleware] Token check for ${pathname}: ${token ? 'found' : 'not found'}`);
+
+  // 認証が必要なパスでトークンがない場合はサインインページへ
+  if (!token) {
+    const signInUrl = new URL('/auth/signin', request.url);
+    signInUrl.searchParams.set('callbackUrl', request.url);
+    console.log(`[Middleware] Redirecting to signin: ${pathname}`);
+    return NextResponse.redirect(signInUrl);
+  }
+
+  return NextResponse.next();
+}
+
+// 重要: APIルートを除外するように修正
+export const config = {
+  matcher: [
+    /*
+     * Match all request paths except:
+     * - api (ALL API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - . (files with extensions)
+     */
+    '/((?!api|_next/static|_next/image|.*\\..*|_next).*)',
+  ],
+};
