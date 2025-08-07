@@ -2,5 +2,19 @@
   "framework": "nextjs",
   "buildCommand": "npm run build",
   "installCommand": "npm install",
-  "devCommand": "npm run dev"
+  "devCommand": "npm run dev",
+  "functions": {
+    "src/app/api/test/route.ts": {
+      "maxDuration": 10
+    },
+    "src/app/api/public/debug/route.ts": {
+      "maxDuration": 10
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/check",
+      "destination": "/api/test"
+    }
+  ]
 }

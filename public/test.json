@@ -1,0 +1,11 @@
+{
+  "status": "ok",
+  "message": "If you can see this, static files are being served correctly",
+  "timestamp": "2025-08-07",
+  "debug_urls": {
+    "public_debug": "/public-debug",
+    "api_test": "/api/test",
+    "api_public_debug": "/api/public/debug",
+    "env_test": "/env-test"
+  }
+}

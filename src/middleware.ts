@@ -7,8 +7,12 @@ const publicPaths = [
   '/auth/signin',
   '/api/auth',
   '/api/public',
+  '/api/test',
+  '/api/check',
   '/public-debug',
   '/debug',
+  '/test',
+  '/env-test',
 ];
 
 // 静的ファイルとAPIパス
