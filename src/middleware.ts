@@ -8,10 +8,20 @@ export default withAuth(
   {
     callbacks: {
       authorized({ req, token }) {
-        // /auth/signin は誰でもアクセス可能
-        if (req.nextUrl.pathname.startsWith("/auth/signin")) {
+        const pathname = req.nextUrl.pathname
+        
+        // 公開ページ・APIのリスト
+        const publicPaths = [
+          '/auth/signin',
+          '/api/public',
+          '/debug'
+        ]
+        
+        // 公開パスの場合は認証不要
+        if (publicPaths.some(path => pathname.startsWith(path))) {
           return true
         }
+        
         // その他のページは認証が必要
         return !!token
       },
