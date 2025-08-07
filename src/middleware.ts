@@ -14,7 +14,8 @@ export default withAuth(
         const publicPaths = [
           '/auth/signin',
           '/api/public',
-          '/debug'
+          '/debug',
+          '/public-debug'
         ]
         
         // 公開パスの場合は認証不要
@@ -30,5 +31,5 @@ export default withAuth(
 )
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|debug.html).*)"],
 }
