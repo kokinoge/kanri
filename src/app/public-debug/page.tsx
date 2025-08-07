@@ -146,6 +146,12 @@ export default function PublicDebugPage() {
             >
               NextAuth ログインテスト
             </button>
+            <button
+              onClick={() => window.location.href = '/api/db-test'}
+              className="bg-yellow-600 text-white py-2 px-4 rounded-md hover:bg-yellow-700"
+            >
+              DB接続文字列チェック
+            </button>
           </div>
         </div>
 
