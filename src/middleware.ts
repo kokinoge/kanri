@@ -2,32 +2,34 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 
-// デバッグフラグ
-const DEBUG = true;
+// デバッグフラグ（本番環境では無効）
+const DEBUG = process.env.NODE_ENV === 'development';
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // APIルートは全てスキップ
   if (pathname.startsWith('/api/')) {
-    if (DEBUG) console.log(`[MW] API route, skipping: ${pathname}`);
+    // API routes are always skipped
     return NextResponse.next();
   }
 
   // 認証不要なページ
   const publicPages = [
     '/auth/signin',
-    '/public-debug',
-    '/debug',
-    '/test',
-    '/env-test',
   ];
+  
+  // 開発環境でのみアクセス可能なページ
+  const devOnlyPages = ['/public-debug', '/debug', '/test', '/env-test'];
+  if (process.env.NODE_ENV === 'development') {
+    publicPages.push(...devOnlyPages);
+  }
 
   // 公開ページチェック
   const isPublicPage = publicPages.some(page => pathname.startsWith(page));
   
   if (isPublicPage) {
-    if (DEBUG) console.log(`[MW] Public page, allowing: ${pathname}`);
+    // Public pages are allowed
     return NextResponse.next();
   }
 
@@ -39,16 +41,16 @@ export async function middleware(request: NextRequest) {
     });
 
     if (!token) {
-      if (DEBUG) console.log(`[MW] No token, redirecting: ${pathname}`);
+      // No token, redirect to signin
       const url = new URL('/auth/signin', request.url);
       url.searchParams.set('callbackUrl', request.url);
       return NextResponse.redirect(url);
     }
 
-    if (DEBUG) console.log(`[MW] Authenticated, allowing: ${pathname}`);
+    // Authenticated, allow access
     return NextResponse.next();
   } catch (error) {
-    console.error('[MW] Error checking auth:', error);
+    // Auth check failed, allow access to prevent lockout
     return NextResponse.next();
   }
 }
