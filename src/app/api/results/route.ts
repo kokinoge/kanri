@@ -1,30 +1,40 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { 
+  ResultWhereInput,
+  ResultQueryParams,
+  ResultCreateRequest,
+  ResultUpdateRequest,
+  ResultFormattedResponse
+} from '@/types/api'
+import { successResponse, validationError, handleApiError } from '@/lib/api-utils'
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const year = searchParams.get('year')
-    const month = searchParams.get('month')
-    const campaignId = searchParams.get('campaignId')
-    const platform = searchParams.get('platform')
-    
-    const where: any = {}
-    
-    if (year) {
-      where.year = parseInt(year)
+    const queryParams: ResultQueryParams = {
+      year: searchParams.get('year') ?? undefined,
+      month: searchParams.get('month') ?? undefined,
+      campaignId: searchParams.get('campaignId') ?? undefined,
+      platform: searchParams.get('platform') ?? undefined
     }
     
-    if (month) {
-      where.month = parseInt(month)
+    const where: ResultWhereInput = {}
+    
+    if (queryParams.year) {
+      where.year = parseInt(queryParams.year)
     }
     
-    if (campaignId) {
-      where.campaignId = campaignId
+    if (queryParams.month) {
+      where.month = parseInt(queryParams.month)
     }
     
-    if (platform) {
-      where.platform = platform
+    if (queryParams.campaignId) {
+      where.campaignId = queryParams.campaignId
+    }
+    
+    if (queryParams.platform) {
+      where.platform = queryParams.platform
     }
     
     const results = await prisma.result.findMany({
@@ -35,9 +45,9 @@ export async function GET(request: NextRequest) {
             client: true,
             budgets: {
               where: {
-                ...(year && { year: parseInt(year) }),
-                ...(month && { month: parseInt(month) }),
-                ...(platform && { platform })
+                ...(queryParams.year && { year: parseInt(queryParams.year) }),
+                ...(queryParams.month && { month: parseInt(queryParams.month) }),
+                ...(queryParams.platform && { platform: queryParams.platform })
               }
             }
           }
@@ -51,7 +61,7 @@ export async function GET(request: NextRequest) {
     })
     
     // 実績データを整形（予算との比較を含む）
-    const formattedResults = results.map(result => {
+    const formattedResults: ResultFormattedResponse[] = results.map(result => {
       const budget = result.campaign.budgets.find(
         b => b.platform === result.platform && 
             b.operationType === result.operationType
@@ -72,19 +82,15 @@ export async function GET(request: NextRequest) {
       }
     })
     
-    return NextResponse.json(formattedResults)
+    return successResponse(formattedResults)
   } catch (error) {
-    console.error('Error fetching results:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch results' },
-      { status: 500 }
-    )
+    return handleApiError(error)
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
+    const body: ResultCreateRequest = await request.json()
     const {
       campaignId,
       year,
@@ -98,18 +104,15 @@ export async function POST(request: NextRequest) {
     // バリデーション
     if (!campaignId || !year || !month || !platform || 
         !operationType || actualSpend === undefined || actualResult === undefined) {
-      return NextResponse.json(
-        { error: 'すべての項目を入力してください' },
-        { status: 400 }
-      )
+      return validationError('すべての項目を入力してください')
     }
     
     // 既存の実績をチェック（重複防止）
     const existing = await prisma.result.findFirst({
       where: {
         campaignId,
-        year: parseInt(year),
-        month: parseInt(month),
+        year: parseInt(String(year)),
+        month: parseInt(String(month)),
         platform,
         operationType
       }
@@ -120,8 +123,8 @@ export async function POST(request: NextRequest) {
       const result = await prisma.result.update({
         where: { id: existing.id },
         data: {
-          actualSpend: parseFloat(actualSpend),
-          actualResult: parseFloat(actualResult)
+          actualSpend: parseFloat(String(actualSpend)),
+          actualResult: parseFloat(String(actualResult))
         },
         include: {
           campaign: {
@@ -131,19 +134,19 @@ export async function POST(request: NextRequest) {
           }
         }
       })
-      return NextResponse.json(result)
+      return successResponse(result, '実績を更新しました')
     }
     
     // 新規作成
     const result = await prisma.result.create({
       data: {
         campaignId,
-        year: parseInt(year),
-        month: parseInt(month),
+        year: parseInt(String(year)),
+        month: parseInt(String(month)),
         platform,
         operationType,
-        actualSpend: parseFloat(actualSpend),
-        actualResult: parseFloat(actualResult)
+        actualSpend: parseFloat(String(actualSpend)),
+        actualResult: parseFloat(String(actualResult))
       },
       include: {
         campaign: {
@@ -154,33 +157,26 @@ export async function POST(request: NextRequest) {
       }
     })
     
-    return NextResponse.json(result, { status: 201 })
+    return successResponse(result, '実績を作成しました')
   } catch (error) {
-    console.error('Error creating result:', error)
-    return NextResponse.json(
-      { error: 'Failed to create result' },
-      { status: 500 }
-    )
+    return handleApiError(error)
   }
 }
 
 export async function PUT(request: NextRequest) {
   try {
-    const body = await request.json()
+    const body: ResultUpdateRequest = await request.json()
     const { id, actualSpend, actualResult } = body
     
     if (!id) {
-      return NextResponse.json(
-        { error: 'Result ID is required' },
-        { status: 400 }
-      )
+      return validationError('Result ID is required')
     }
     
     const result = await prisma.result.update({
       where: { id },
       data: {
-        ...(actualSpend !== undefined && { actualSpend: parseFloat(actualSpend) }),
-        ...(actualResult !== undefined && { actualResult: parseFloat(actualResult) })
+        ...(actualSpend !== undefined && { actualSpend: parseFloat(String(actualSpend)) }),
+        ...(actualResult !== undefined && { actualResult: parseFloat(String(actualResult)) })
       },
       include: {
         campaign: {
@@ -191,12 +187,8 @@ export async function PUT(request: NextRequest) {
       }
     })
     
-    return NextResponse.json(result)
+    return successResponse(result, '実績を更新しました')
   } catch (error) {
-    console.error('Error updating result:', error)
-    return NextResponse.json(
-      { error: 'Failed to update result' },
-      { status: 500 }
-    )
+    return handleApiError(error)
   }
 }

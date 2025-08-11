@@ -1,12 +1,22 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { 
+  MasterWhereInput,
+  MasterQueryParams,
+  MasterCreateRequest,
+  MasterUpdateRequest,
+  GroupedMasters
+} from '@/types/api'
+import { successResponse, validationError, handleApiError } from '@/lib/api-utils'
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const category = searchParams.get('category')
+    const queryParams: MasterQueryParams = {
+      category: searchParams.get('category') ?? undefined
+    }
     
-    const where = category ? { category } : {}
+    const where: MasterWhereInput = queryParams.category ? { category: queryParams.category } : {}
     
     const masters = await prisma.master.findMany({
       where,
@@ -17,7 +27,7 @@ export async function GET(request: NextRequest) {
     })
     
     // カテゴリ別にグループ化
-    const groupedMasters = masters.reduce((acc, master) => {
+    const groupedMasters: GroupedMasters = masters.reduce((acc, master) => {
       if (!acc[master.category]) {
         acc[master.category] = []
       }
@@ -27,28 +37,21 @@ export async function GET(request: NextRequest) {
         order: master.order
       })
       return acc
-    }, {} as Record<string, any[]>)
+    }, {} as GroupedMasters)
     
-    return NextResponse.json(groupedMasters)
+    return successResponse(groupedMasters)
   } catch (error) {
-    console.error('Error fetching masters:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch masters' },
-      { status: 500 }
-    )
+    return handleApiError(error)
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
+    const body: MasterCreateRequest = await request.json()
     const { category, value, order } = body
     
     if (!category || !value) {
-      return NextResponse.json(
-        { error: 'カテゴリと値は必須です' },
-        { status: 400 }
-      )
+      return validationError('カテゴリと値は必須です')
     }
     
     // 既存の最大orderを取得
@@ -67,26 +70,19 @@ export async function POST(request: NextRequest) {
       }
     })
     
-    return NextResponse.json(master, { status: 201 })
+    return successResponse(master, 'マスタデータを作成しました')
   } catch (error) {
-    console.error('Error creating master:', error)
-    return NextResponse.json(
-      { error: 'Failed to create master' },
-      { status: 500 }
-    )
+    return handleApiError(error)
   }
 }
 
 export async function PUT(request: NextRequest) {
   try {
-    const body = await request.json()
+    const body: MasterUpdateRequest = await request.json()
     const { id, value, order } = body
     
     if (!id) {
-      return NextResponse.json(
-        { error: 'Master ID is required' },
-        { status: 400 }
-      )
+      return validationError('Master ID is required')
     }
     
     const master = await prisma.master.update({
@@ -97,13 +93,9 @@ export async function PUT(request: NextRequest) {
       }
     })
     
-    return NextResponse.json(master)
+    return successResponse(master, 'マスタデータを更新しました')
   } catch (error) {
-    console.error('Error updating master:', error)
-    return NextResponse.json(
-      { error: 'Failed to update master' },
-      { status: 500 }
-    )
+    return handleApiError(error)
   }
 }
 
@@ -113,22 +105,15 @@ export async function DELETE(request: NextRequest) {
     const id = searchParams.get('id')
     
     if (!id) {
-      return NextResponse.json(
-        { error: 'Master ID is required' },
-        { status: 400 }
-      )
+      return validationError('Master ID is required')
     }
     
     await prisma.master.delete({
       where: { id }
     })
     
-    return NextResponse.json({ message: 'Master deleted successfully' })
+    return successResponse({ message: 'Master deleted successfully' }, 'マスタデータを削除しました')
   } catch (error) {
-    console.error('Error deleting master:', error)
-    return NextResponse.json(
-      { error: 'Failed to delete master' },
-      { status: 500 }
-    )
+    return handleApiError(error)
   }
 }

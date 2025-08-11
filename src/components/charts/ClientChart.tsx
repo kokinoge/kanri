@@ -12,6 +12,7 @@ import {
   Legend
 } from 'chart.js'
 import { Line } from 'react-chartjs-2'
+import { createLineChartOptions, getChartColor, ChartLoadingSpinner, ChartNoData } from '@/lib/chart-config'
 
 ChartJS.register(
   CategoryScale,
@@ -84,64 +85,18 @@ export default function ClientChart() {
       setClientData(data)
       setLoading(false)
     } catch (error) {
-      console.error('Error fetching client data:', error)
       setLoading(false)
     }
   }
 
-  const options = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        position: 'top' as const,
-      },
-      title: {
-        display: false,
-      },
-      tooltip: {
-        callbacks: {
-          label: function(context: any) {
-            const label = context.dataset.label || ''
-            const value = new Intl.NumberFormat('ja-JP', {
-              style: 'currency',
-              currency: 'JPY'
-            }).format(context.parsed.y)
-            return `${label}: ${value}`
-          }
-        }
-      }
-    },
-    scales: {
-      y: {
-        beginAtZero: true,
-        ticks: {
-          callback: function(value: any) {
-            return new Intl.NumberFormat('ja-JP', {
-              style: 'currency',
-              currency: 'JPY',
-              notation: 'compact'
-            }).format(value)
-          }
-        }
-      }
-    }
-  }
+  const options = createLineChartOptions()
 
   if (loading) {
-    return (
-      <div className="h-64 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-2 border-gray-200 border-t-blue-600"></div>
-      </div>
-    )
+    return <ChartLoadingSpinner />
   }
 
   if (clientData.length === 0) {
-    return (
-      <div className="h-64 flex items-center justify-center text-gray-500">
-        データがありません
-      </div>
-    )
+    return <ChartNoData />
   }
 
   // 月ラベルを取得（どのクライアントでも同じはず）
@@ -149,14 +104,7 @@ export default function ClientChart() {
 
   // クライアントごとのデータセットを生成
   const datasets = clientData.map((client, index) => {
-    const colors = [
-      { border: 'rgb(59, 130, 246)', background: 'rgba(59, 130, 246, 0.5)' },
-      { border: 'rgb(34, 197, 94)', background: 'rgba(34, 197, 94, 0.5)' },
-      { border: 'rgb(168, 85, 247)', background: 'rgba(168, 85, 247, 0.5)' },
-      { border: 'rgb(251, 146, 60)', background: 'rgba(251, 146, 60, 0.5)' },
-      { border: 'rgb(14, 165, 233)', background: 'rgba(14, 165, 233, 0.5)' }
-    ]
-    const color = colors[index % colors.length]
+    const color = getChartColor(index)
 
     return {
       label: client.clientName,

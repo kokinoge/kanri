@@ -1,25 +1,35 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { 
+  BudgetWhereInput,
+  BudgetQueryParams,
+  BudgetCreateRequest,
+  BudgetUpdateRequest,
+  BudgetFormattedResponse
+} from '@/types/api'
+import { successResponse, validationError, handleApiError } from '@/lib/api-utils'
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const year = searchParams.get('year')
-    const month = searchParams.get('month')
-    const campaignId = searchParams.get('campaignId')
-    
-    const where: any = {}
-    
-    if (year) {
-      where.year = parseInt(year)
+    const queryParams: BudgetQueryParams = {
+      year: searchParams.get('year') ?? undefined,
+      month: searchParams.get('month') ?? undefined,
+      campaignId: searchParams.get('campaignId') ?? undefined
     }
     
-    if (month) {
-      where.month = parseInt(month)
+    const where: BudgetWhereInput = {}
+    
+    if (queryParams.year) {
+      where.year = parseInt(queryParams.year)
     }
     
-    if (campaignId) {
-      where.campaignId = campaignId
+    if (queryParams.month) {
+      where.month = parseInt(queryParams.month)
+    }
+    
+    if (queryParams.campaignId) {
+      where.campaignId = queryParams.campaignId
     }
     
     const budgets = await prisma.budget.findMany({
@@ -39,7 +49,7 @@ export async function GET(request: NextRequest) {
     })
     
     // 予算データを整形
-    const formattedBudgets = budgets.map(budget => ({
+    const formattedBudgets: BudgetFormattedResponse[] = budgets.map(budget => ({
       ...budget,
       budgetAmount: Number(budget.budgetAmount),
       targetValue: Number(budget.targetValue),
@@ -47,19 +57,15 @@ export async function GET(request: NextRequest) {
       campaignName: budget.campaign.name
     }))
     
-    return NextResponse.json(formattedBudgets)
+    return successResponse(formattedBudgets)
   } catch (error) {
-    console.error('Error fetching budgets:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch budgets' },
-      { status: 500 }
-    )
+    return handleApiError(error)
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
+    const body: BudgetCreateRequest = await request.json()
     const {
       campaignId,
       year,
@@ -75,23 +81,20 @@ export async function POST(request: NextRequest) {
     // バリデーション
     if (!campaignId || !year || !month || !platform || !operationType || 
         !revenueType || !budgetAmount || !targetKpi || !targetValue) {
-      return NextResponse.json(
-        { error: 'すべての項目を入力してください' },
-        { status: 400 }
-      )
+      return validationError('すべての項目を入力してください')
     }
     
     const budget = await prisma.budget.create({
       data: {
         campaignId,
-        year: parseInt(year),
-        month: parseInt(month),
+        year: parseInt(String(year)),
+        month: parseInt(String(month)),
         platform,
         operationType,
         revenueType,
-        budgetAmount: parseFloat(budgetAmount),
+        budgetAmount: parseFloat(String(budgetAmount)),
         targetKpi,
-        targetValue: parseFloat(targetValue)
+        targetValue: parseFloat(String(targetValue))
       },
       include: {
         campaign: {
@@ -102,27 +105,43 @@ export async function POST(request: NextRequest) {
       }
     })
     
-    return NextResponse.json(budget, { status: 201 })
+    return successResponse(budget, '予算を作成しました')
   } catch (error) {
-    console.error('Error creating budget:', error)
-    return NextResponse.json(
-      { error: 'Failed to create budget' },
-      { status: 500 }
-    )
+    return handleApiError(error)
   }
 }
 
 export async function PUT(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { id, ...updateData } = body
+    const body: BudgetUpdateRequest = await request.json()
+    const { id, ...updateFields } = body
     
     if (!id) {
-      return NextResponse.json(
-        { error: 'Budget ID is required' },
-        { status: 400 }
-      )
+      return validationError('Budget ID is required')
     }
+    
+    // 型安全なupdateデータを構築
+    const updateData: Partial<{
+      campaignId: string
+      year: number
+      month: number
+      platform: string
+      operationType: string
+      revenueType: string
+      budgetAmount: number
+      targetKpi: string
+      targetValue: number
+    }> = {}
+    
+    if (updateFields.campaignId !== undefined) updateData.campaignId = updateFields.campaignId
+    if (updateFields.year !== undefined) updateData.year = parseInt(String(updateFields.year))
+    if (updateFields.month !== undefined) updateData.month = parseInt(String(updateFields.month))
+    if (updateFields.platform !== undefined) updateData.platform = updateFields.platform
+    if (updateFields.operationType !== undefined) updateData.operationType = updateFields.operationType
+    if (updateFields.revenueType !== undefined) updateData.revenueType = updateFields.revenueType
+    if (updateFields.budgetAmount !== undefined) updateData.budgetAmount = parseFloat(String(updateFields.budgetAmount))
+    if (updateFields.targetKpi !== undefined) updateData.targetKpi = updateFields.targetKpi
+    if (updateFields.targetValue !== undefined) updateData.targetValue = parseFloat(String(updateFields.targetValue))
     
     const budget = await prisma.budget.update({
       where: { id },
@@ -136,12 +155,8 @@ export async function PUT(request: NextRequest) {
       }
     })
     
-    return NextResponse.json(budget)
+    return successResponse(budget, '予算を更新しました')
   } catch (error) {
-    console.error('Error updating budget:', error)
-    return NextResponse.json(
-      { error: 'Failed to update budget' },
-      { status: 500 }
-    )
+    return handleApiError(error)
   }
 }

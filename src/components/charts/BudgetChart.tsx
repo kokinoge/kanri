@@ -11,6 +11,7 @@ import {
   Legend
 } from 'chart.js'
 import { Bar } from 'react-chartjs-2'
+import { createBarChartOptions, chartColors, ChartLoadingSpinner, ChartNoData } from '@/lib/chart-config'
 
 ChartJS.register(
   CategoryScale,
@@ -74,49 +75,11 @@ export default function BudgetChart() {
       setChartData(data)
       setLoading(false)
     } catch (error) {
-      console.error('Error fetching budget data:', error)
       setLoading(false)
     }
   }
 
-  const options = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        position: 'top' as const,
-      },
-      title: {
-        display: false,
-      },
-      tooltip: {
-        callbacks: {
-          label: function(context: any) {
-            const label = context.dataset.label || ''
-            const value = new Intl.NumberFormat('ja-JP', {
-              style: 'currency',
-              currency: 'JPY'
-            }).format(context.parsed.y)
-            return `${label}: ${value}`
-          }
-        }
-      }
-    },
-    scales: {
-      y: {
-        beginAtZero: true,
-        ticks: {
-          callback: function(value: any) {
-            return new Intl.NumberFormat('ja-JP', {
-              style: 'currency',
-              currency: 'JPY',
-              notation: 'compact'
-            }).format(value)
-          }
-        }
-      }
-    }
-  }
+  const options = createBarChartOptions()
 
   const data = {
     labels: chartData.map(d => d.month),
@@ -124,34 +87,26 @@ export default function BudgetChart() {
       {
         label: '予算',
         data: chartData.map(d => d.budget),
-        backgroundColor: 'rgba(59, 130, 246, 0.5)',
-        borderColor: 'rgb(59, 130, 246)',
+        backgroundColor: chartColors[0].background,
+        borderColor: chartColors[0].border,
         borderWidth: 1
       },
       {
         label: '実績',
         data: chartData.map(d => d.actual),
-        backgroundColor: 'rgba(34, 197, 94, 0.5)',
-        borderColor: 'rgb(34, 197, 94)',
+        backgroundColor: chartColors[1].background,
+        borderColor: chartColors[1].border,
         borderWidth: 1
       }
     ]
   }
 
   if (loading) {
-    return (
-      <div className="h-64 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-2 border-gray-200 border-t-blue-600"></div>
-      </div>
-    )
+    return <ChartLoadingSpinner />
   }
 
   if (chartData.length === 0) {
-    return (
-      <div className="h-64 flex items-center justify-center text-gray-500">
-        データがありません
-      </div>
-    )
+    return <ChartNoData />
   }
 
   return (
